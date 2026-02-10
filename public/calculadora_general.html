@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Calculadora de servicios generales - Impresiones, ploteos, encuadernados, empastados y más" />
+  <meta name="keywords" content="impresiones, ploteos, encuadernado, empastado, plastificado" />
+  <meta name="author" content="ServiGaco" />
+  
+  <title>Calculadora de Servicios - ServiGaco</title>
+
+  <!-- FUENTES: Montserrat -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- ESTILOS -->
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- TAILWIND CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+    }
+  </script>
+
+  <!-- FAVICON -->
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icono.png" />
+  <link rel="shortcut icon" href="assets/icono.png" />
+
+  <style>
+    /* ANIMACIONES MODAL */
+    @keyframes animate-fade-in { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes animate-slide-in-up { from { transform: translateY(20px); opacity: 0.8; } to { transform: translateY(0); opacity: 1; } }
+    .animate-fade-in { animation: animate-fade-in 0.3s ease-out forwards; }
+    .animate-slide-in-up { animation: animate-slide-in-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+    /* BOTÓN FLOTANTE */
+    .btn-admin-precios {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #6c63ff;
+      color: #fff;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 30px;
+      font-weight: bold;
+      cursor: pointer;
+      z-index: 9999;
+    }
+
+    /* FONDO MODAL */
+    .modal-precios {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 10000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-precios.show {
+      display: flex;
+    }
+
+    /* CONTENIDO */
+    .modal-precios-content {
+      background: #fff;
+      width: 95%;
+      max-width: 1100px;
+      max-height: 90vh;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .modal-precios-header {
+      background: #6c63ff;
+      color: white;
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-precios-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .modal-precios-footer {
+      padding: 12px;
+      background: #f4f4f4;
+      text-align: center;
+    }
+
+    .btn-cerrar-modal {
+      background: transparent;
+      border: 2px solid white;
+      color: white;
+      border-radius: 50%;
+      width: 34px;
+      height: 34px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="container">
+    
+    <!-- ========================================
+         🧭 NAVEGACIÓN PRINCIPAL
+         ======================================== -->
+    <servigaco-nav></servigaco-nav>
+
+    <!-- ========================================
+         📋 SECCIÓN: CALCULADORA GENERAL
+         ======================================== -->
+    <section class="form-card" aria-label="Calculadora de servicios">
+      <!-- Logo -->
+      <figure class="logo-container">
+        <img src="assets/logo.png" alt="Logo de la empresa" class="logo-form" width="150" height="80" />
+      </figure>
+
+      <!-- Título principal -->
+      <header>
+        <h1>Calculadora de Servicios</h1>
+        <p class="subtitle">Cotiza impresiones, ploteos, encuadernados y más</p>
+      </header>
+
+      <!-- ========================================
+           � TABLA DE COTIZACIÓN
+           ======================================== -->
+      <div class="cotizacion-section">
+        <div class="cotizacion-header flex flex-col md:flex-row justify-between items-center">
+          <h2>
+            <span class="cotizacion-icon">📊</span>
+            Cotización en Tiempo Real
+            <span class="cotizacion-count" id="cotizacionCount">0</span>
+          </h2>
+          <div class="flex flex-wrap gap-2 mt-3 md:mt-0">
+            <button type="button" id="btnVerFacturas" class="py-2 px-5 rounded-xl font-bold text-white bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-500 hover:to-purple-700 shadow-md transform transition-all duration-200 hover:-translate-y-1 flex items-center gap-2 text-sm">
+              <span class="text-lg">📜</span>
+              Ver Facturas
+            </button>
+            <button type="button" id="btnVerGuardadas" class="py-2 px-5 rounded-xl font-bold text-white bg-gradient-to-r from-teal-500 to-teal-700 hover:from-teal-400 hover:to-teal-600 shadow-md transform transition-all duration-200 hover:-translate-y-1 flex items-center gap-2 text-sm">
+              <span class="text-lg">📂</span>
+              Ver Guardadas
+            </button>
+          </div>
+        </div>
+
+        <div class="cotizacion-tabla-container overflow-x-auto rounded-xl shadow-lg border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700 my-8">
+          <table class="w-full border-collapse cotizacion-tabla table-fixed" id="cotizacionTabla">
+            <thead>
+              <tr class="bg-gradient-to-r from-blue-600 to-blue-800 text-white">
+                <th class="px-6 py-4 text-left font-bold uppercase tracking-wider text-sm w-[20%]">Servicio</th>
+                <th class="px-6 py-4 text-left font-bold uppercase tracking-wider text-sm w-[30%]">Descripción</th>
+                <th class="px-6 py-4 text-center font-bold uppercase tracking-wider text-sm w-[15%]">Cantidad</th>
+                <th class="px-6 py-4 text-right font-bold uppercase tracking-wider text-sm w-[15%]">Precio Unit.</th>
+                <th class="px-6 py-4 text-right font-bold uppercase tracking-wider text-sm w-[15%]">Total</th>
+                <th class="px-6 py-4 text-center font-bold uppercase tracking-wider text-sm w-[5%]"></th>
+              </tr>
+            </thead>
+            <tbody id="cotizacionBody" class="divide-y divide-gray-100">
+              <tr class="cotizacion-vacia bg-gray-50">
+                <td colspan="6" class="p-12 text-center">
+                  <div class="flex flex-col items-center justify-center text-gray-500">
+                    <span class="text-6xl mb-4">📭</span>
+                    <p class="text-lg font-medium">No hay servicios en la cotización</p>
+                    <p class="text-sm text-gray-400 mt-1">Selecciona un servicio abajo para empezar</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+            <tfoot id="cotizacionFooter" style="display: none;" class="bg-gray-50 dark:bg-gray-800 border-t-2 border-gray-200 dark:border-gray-700">
+              <tr class="subtotal-row text-gray-600 dark:text-gray-300">
+                <td colspan="4" class="px-6 py-3 text-right font-bold">Subtotal:</td>
+                <td class="px-6 py-3 text-right font-bold text-gray-800 dark:text-gray-100 text-lg" id="subtotalAmount">RD$0.00</td>
+                <td></td>
+              </tr>
+              <tr class="impuesto-row text-orange-600" id="impuestoRow" style="display: none;">
+                <td colspan="4" class="px-6 py-3 text-right font-bold" id="impuestoLabel">ITBIS (18%):</td>
+                <td class="px-6 py-3 text-right font-bold text-lg" id="impuestoAmount">RD$0.00</td>
+                <td></td>
+              </tr>
+              <tr class="total-row bg-gradient-to-r from-orange-50 to-orange-100 dark:from-gray-700 dark:to-gray-600 border-t border-orange-200 dark:border-gray-600">
+                <td colspan="4" class="px-6 py-4 text-right font-black text-gray-800 dark:text-gray-100 text-xl">TOTAL:</td>
+                <td class="px-6 py-4 text-right font-black text-orange-600 text-2xl" id="totalAmount">RD$0.00</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <!-- Botón para generar PDF -->
+        <div class="pdf-button-container">
+          <button id="generarPDF" class="w-full py-4 px-6 rounded-xl font-bold text-white text-lg bg-gradient-to-r from-orange-500 via-orange-600 to-orange-700 hover:from-orange-400 hover:to-orange-600 shadow-lg shadow-orange-500/40 transform transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02] flex items-center justify-center gap-3 border border-orange-400/20">
+            <span class="text-2xl">📄</span>
+            Generar PDF de Cotización
+          </button>
+        </div>
+
+        <!-- ========================================
+             🧾 SECCIÓN: COMPROBANTE
+             ======================================== -->
+        <div class="comprobante-section" id="comprobanteSection" style="display: none;">
+          <h3 class="comprobante-title">
+            <span class="section-icon">🧾</span>
+            Tipo de Comprobante
+          </h3>
+          <div class="form-group">
+            <label for="tipoComprobante">
+              <span class="label-icon">📋</span>
+              Tipo de comprobante
+            </label>
+            <select id="tipoComprobante">
+              <option value="ninguno">Sin comprobante</option>
+              <option value="fiscal">Comprobante Fiscal (ITBIS 18%)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="acciones-cotizacion" id="cotizacionAcciones" style="display: none;">
+          <button type="button" id="btnWhatsapp" class="font-bold text-white bg-gradient-to-r from-green-500 to-green-700 hover:from-green-400 hover:to-green-600 shadow-lg shadow-green-500/30 transform transition-all duration-200 hover:-translate-y-1 flex items-center justify-center gap-2">
+            <span class="text-xl">💬</span>
+            Enviar a WhatsApp
+          </button>
+          <button type="button" id="btnLimpiarCotizacion" class="font-bold text-gray-700 bg-white border-2 border-gray-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 shadow-md transform transition-all duration-200 hover:-translate-y-1 flex items-center justify-center gap-2">
+            <span class="text-xl">🗑️</span>
+            Limpiar Cotización
+          </button>
+          <button type="button" id="btnGuardarCotizacion" class="font-bold text-white bg-gradient-to-r from-indigo-500 to-indigo-700 hover:from-indigo-400 hover:to-indigo-600 shadow-lg shadow-indigo-500/30 transform transition-all duration-200 hover:-translate-y-1 flex items-center justify-center gap-2" title="Guardar la cotización actual para editarla en el futuro">
+            <span class="text-xl">💾</span>
+            Guardar
+          </button>
+          <button type="button" id="btnGuardarCambios" class="font-bold text-white bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-500 hover:to-purple-700 shadow-lg shadow-purple-500/30 transform transition-all duration-200 hover:-translate-y-1 flex items-center justify-center gap-2" style="display: none;" title="Actualizar la cotización existente">
+            <span class="text-xl">📝</span>
+            Guardar Cambios
+          </button>
+        </div>
+      </div>
+
+      <!-- ========================================
+           ⚡ SECCIÓN: COMBOS Y PAQUETES (NUEVO)
+           ======================================== -->
+      <div class="bg-white rounded-2xl shadow-sm border border-purple-100 p-6 mt-8 mb-8">
+        <h2 class="text-2xl font-black text-gray-800 mb-4 flex items-center gap-3">
+          <span class="bg-purple-600 text-white p-2 rounded-xl text-lg shadow-md shadow-purple-200">⚡</span>
+          Combos Rápidos
+        </h2>
+        
+        <!-- Lista de botones de combos (Se llena desde Firebase) -->
+        <div id="listaCombos" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
+          <p class="text-gray-400 text-sm col-span-full animate-pulse">Cargando paquetes...</p>
+        </div>
+
+        <!-- Formulario para crear nuevo combo -->
+        <details class="group">
+          <summary class="flex items-center gap-2 font-bold text-purple-600 cursor-pointer list-none select-none">
+            <span class="bg-purple-100 p-1 rounded">➕</span> <span>Crear Nuevo Combo</span>
+          </summary>
+          <div class="mt-4 p-4 bg-purple-50 rounded-xl border border-purple-100 grid gap-4 animate-fade-in">
+            <div>
+              <label class="block text-xs font-bold text-purple-800 mb-1">Descripción del Paquete</label>
+              <input type="text" id="inputNombreCombo" placeholder="Ej: 100 Copias Color + Espiral + Portada" class="w-full px-3 py-2 rounded-lg border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-500">
+            </div>
+            <div class="flex gap-4">
+              <div class="w-1/3">
+                <label class="block text-xs font-bold text-purple-800 mb-1">Precio</label>
+                <input type="number" id="inputPrecioCombo" placeholder="0.00" class="w-full px-3 py-2 rounded-lg border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-500">
+              </div>
+              <button onclick="guardarNuevoCombo()" class="flex-1 py-2 px-4 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg transition-colors shadow-sm mt-auto h-[42px]">Guardar en Firebase</button>
+            </div>
+          </div>
+        </details>
+      </div>
+
+      <!-- ========================================
+           ➕ AGREGAR SERVICIOS
+           ======================================== -->
+      <div class="agregar-servicio bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mt-8">
+        <h2 class="text-2xl font-black text-gray-800 mb-6 flex items-center gap-3 border-b border-gray-100 pb-4">
+          <span class="bg-blue-600 text-white p-2 rounded-xl text-lg shadow-md shadow-blue-200">➕</span>
+          Agregar Servicio
+        </h2>
+
+        <!-- Selector de tipo de servicio -->
+        <div class="mb-8">
+          <label for="tipoServicio" class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+            <span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg text-xs">📦</span>
+            Tipo de servicio
+          </label>
+          <div class="relative">
+            <select id="tipoServicio" class="w-full px-5 py-4 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 font-semibold text-lg focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none appearance-none cursor-pointer shadow-sm">
+              <option value="">-- Selecciona un servicio --</option>
+              <option value="impresion">📄 Impresiones</option>
+              <option value="encuadernado">📚 Encuadernado Espiral</option>
+              <option value="empastado">📕 Empastado</option>
+              <option value="ploteo">🖼️ Ploteo</option>
+              <option value="plastificado">💳 Plastificado</option>
+              <option value="libro">📘 Libro Completo (con Terminación)</option>
+              <option value="personalizado">🛠️ Servicio Personalizado</option>
+            </select>
+            <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500">
+              <svg class="w-5 h-5 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========================================
+             📄 FORMULARIO: IMPRESIONES
+             ======================================== -->
+        <div id="formImpresion" class="form-servicio animate-fade-in-up" style="display: none;">
+          <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+            <span class="text-2xl">📄</span>
+            Impresiones
+          </h3>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <!-- Tamaño -->
+            <div class="group">
+              <label for="tamanoImpresion" class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg text-xs">📐</span> Tamaño
+              </label>
+              <div class="relative">
+                <select id="tamanoImpresion" class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none appearance-none font-medium">
+                  <option value="carta">Carta (8½ x 11)</option>
+                  <option value="legal">Legal (8½ x 14)</option>
+                  <option value="tabloide">Tabloide (11 x 17)</option>
+                </select>
+                <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500"><svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg></div>
+              </div>
+            </div>
+
+            <!-- Tipo de impresión -->
+            <div class="group">
+              <label for="tipoImpresion" class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg text-xs">🎨</span> Tipo de impresión
+              </label>
+              <div class="relative">
+                <select id="tipoImpresion" class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none appearance-none font-medium">
+                  <option value="bn">Blanco y Negro</option>
+                  <option value="color">Color</option>
+                  <option value="full_color">Full Color</option>
+                  <option value="especial">Cartonite/Satinado/Adhesivo</option>
+                </select>
+                <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500"><svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg></div>
+              </div>
+            </div>
+
+            <!-- Caras -->
+            <div class="group">
+              <label for="caras" class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg text-xs">📑</span> Caras
+              </label>
+              <div class="relative">
+                <select id="caras" class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none appearance-none font-medium">
+                  <option value="doble">Doble cara</option>
+                  <option value="simple">Simple cara</option>
+                </select>
+                <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500"><svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg></div>
+              </div>
+            </div>
+
+            <!-- Cantidad de páginas -->
+            <div class="group">
+              <label for="cantidadPaginas" class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg text-xs">🔢</span> Cantidad de páginas
+              </label>
+              <input type="number" id="cantidadPaginas" min="1" value="1" placeholder="Ej: 50" class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none font-medium" />
+              <small class="text-xs text-gray-400 mt-1 ml-1">El precio se ajusta según la cantidad</small>
+            </div>
+          </div>
+
+          <!-- Precio calculado en tiempo real -->
+          <div class="precio-calculado mt-6 p-5 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-xl shadow-sm" id="precioImpresion" style="display: none;">
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-sm font-semibold text-gray-600">Precio unitario:</span>
+              <span class="text-lg font-bold text-blue-600 bg-white px-3 py-1 rounded-lg shadow-sm border border-blue-100" id="precioUnitarioImpresion">RD$0.00</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-sm font-bold text-gray-800">Total estimado:</span>
+              <span class="text-xl font-black text-indigo-700" id="precioTotalImpresion">RD$0.00</span>
+            </div>
+          </div>
+
+          <!-- Precio personalizado (opcional) -->
+          <div class="mt-6 pt-6 border-t border-gray-100">
+            <label for="precioPersonalImpresion" class="block text-sm font-bold text-gray-500 mb-2 flex items-center gap-2">
+              <span class="bg-gray-100 text-gray-500 p-1.5 rounded-lg text-xs">💰</span> Precio personalizado (opcional)
+            </label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <span class="text-gray-400 font-bold">RD$</span>
+              </div>
+              <input type="number" id="precioPersonalImpresion" step="0.01" placeholder="Dejar vacío para usar precio automático" class="w-full pl-12 pr-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 focus:bg-white focus:border-gray-400 focus:ring-4 focus:ring-gray-200 transition-all duration-200 outline-none font-medium" />
+            </div>
+            <small class="text-xs text-gray-400 mt-1 ml-1">Si no especificas, se calculará automáticamente</small>
+          </div>
+
+          <button type="button" class="w-full mt-6 py-3 px-6 rounded-xl font-bold text-white bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 hover:from-blue-500 hover:to-blue-700 shadow-lg shadow-blue-500/40 transform transition-all duration-200 hover:-translate-y-1 flex items-center justify-center gap-2 group" onclick="agregarImpresion()">
+            <span class="text-xl group-hover:scale-110 transition-transform">➕</span>
+            Agregar a la cotizacion
+          </button>
+        </div>
+
+        <!-- ========================================
+             📚 FORMULARIO: ENCUADERNADO ESPIRAL
+             ======================================== -->
+        <div id="formEncuadernado" class="form-servicio animate-fade-in-up" style="display: none;">
+          <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+            <span class="text-2xl">📚</span>
+            Encuadernado Espiral
+          </h3>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <!-- Cantidad de páginas -->
+            <div class="group">
+              <label for="paginasEncuadernado" class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg text-xs">📊</span> Cantidad de páginas
+              </label>
+              <input type="number" id="paginasEncuadernado" min="1" max="1000" value="100" placeholder="Ej: 100" class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none font-medium" />
+              <small class="text-xs text-gray-400 mt-1 ml-1">Máximo 1000 páginas</small>
+            </div>
+
+            <!-- Cantidad de encuadernados -->
+            <div class="group">
+              <label for="cantidadEncuadernado" class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg text-xs">🔢</span> Cantidad de encuadernados
+              </label>
+              <input type="number" id="cantidadEncuadernado" min="1" value="1" placeholder="Ej: 3" class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none font-medium" />
+            </div>
+          </div>
+
+          <!-- Precio calculado en tiempo real -->
+          <div class="precio-calculado mt-6 p-5 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-xl shadow-sm" id="precioEncuadernado" style="display: none;">
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-sm font-semibold text-gray-600">Precio unitario:</span>
+              <span class="text-lg font-bold text-blue-600 bg-white px-3 py-1 rounded-lg shadow-sm border border-blue-100" id="precioUnitarioEncuadernado">RD$0.00</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-sm font-bold text-gray-800">Total estimado:</span>
+              <span class="text-xl font-black text-indigo-700" id="precioTotalEncuadernado">RD$0.00</span>
+            </div>
+          </div>
+
+          <!-- Precio personalizado -->
+          <div class="mt-6 pt-6 border-t border-gray-100">
+            <label for="precioPersonalEncuadernado" class="block text-sm font-bold text-gray-500 mb-2 flex items-center gap-2">
+              <span class="bg-gray-100 text-gray-500 p-1.5 rounded-lg text-xs">💰</span> Precio personalizado (opcional)
+            </label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <span class="text-gray-400 font-bold">RD$</span>
+              </div>
+              <input type="number" id="precioPersonalEncuadernado" step="0.01" placeholder="Dejar vacío para usar precio automático" class="w-full pl-12 pr-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 focus:bg-white focus:border-gray-400 focus:ring-4 focus:ring-gray-200 transition-all duration-200 outline-none font-medium" />
+            </div>
+          </div>
+
+          <button type="button" class="w-full mt-6 py-3 px-6 rounded-xl font-bold text-white bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 hover:from-blue-500 hover:to-blue-700 shadow-lg shadow-blue-500/40 transform transition-all duration-200 hover:-translate-y-1 flex items-center justify-center gap-2 group" onclick="agregarEncuadernado()">
+            <span class="text-xl group-hover:scale-110 transition-transform">➕</span>
+            Agregar a la cotizacion
+          </button>
+        </div>
+
+        <!-- ========================================
+             📕 FORMULARIO: EMPASTADO
+             ======================================== -->
+        <div id="formEmpastado" class="form-servicio animate-fade-in-up" style="display: none;">
+          <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+            <span class="text-2xl">📕</span>
+            Empastado
+          </h3>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <!-- Tipo de empastado -->
+            <div class="group">
+              <label for="tipoEmpastadoGeneral" class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg text-xs">📖</span> Tipo de empastado
+              </label>
+              <div class="relative">
+                <select id="tipoEmpastadoGeneral" class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none appearance-none font-medium">
+                  <option value="tapa_dura">Tapa Dura</option>
+                  <option value="tapa_blanda">Tapa Blanda</option>
+                </select>
+                <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500"><svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg></div>
+              </div>
+            </div>
+
+            <!-- Tamaño -->
+            <div class="group">
+              <label for="tamanoEmpastado" class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg text-xs">📐</span> Tamaño
+              </label>
+              <div class="relative">
+                <select id="tamanoEmpastado" class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none appearance-none font-medium">
+                  <option value="carta">Carta (8.5x11)</option>
+                  <option value="legal">Legal (8.5x14)</option>
+                  <option value="tabloide">Tabloide (11x17)</option>
+                </select>
+                <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500"><svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg></div>
+              </div>
+              <small class="text-xs text-gray-400 mt-1 ml-1">Tapa blanda solo disponible en carta</small>
+            </div>
+
+            <!-- Cantidad -->
+            <div class="group md:col-span-2">
+              <label for="cantidadEmpastado" class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg text-xs">🔢</span> Cantidad
+              </label>
+              <input type="number" id="cantidadEmpastado" min="1" value="1" class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none font-medium" />
+            </div>
+          </div>
+
+          <!-- Precio calculado en tiempo real -->
+          <div class="precio-calculado mt-6 p-5 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-xl shadow-sm" id="precioEmpastado" style="display: none;">
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-sm font-semibold text-gray-600">Precio unitario:</span>
+              <span class="text-lg font-bold text-blue-600 bg-white px-3 py-1 rounded-lg shadow-sm border border-blue-100" id="precioUnitarioEmpastado">RD$0.00</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-sm font-bold text-gray-800">Total estimado:</span>
+              <span class="text-xl font-black text-indigo-700" id="precioTotalEmpastado">RD$0.00</span>
+            </div>
+          </div>
+
+          <!-- Precio personalizado -->
+          <div class="mt-6 pt-6 border-t border-gray-100">
+            <label for="precioPersonalEmpastado" class="block text-sm font-bold text-gray-500 mb-2 flex items-center gap-2">
+              <span class="bg-gray-100 text-gray-500 p-1.5 rounded-lg text-xs">💰</span> Precio personalizado (opcional)
+            </label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <span class="text-gray-400 font-bold">RD$</span>
+              </div>
+              <input type="number" id="precioPersonalEmpastado" step="0.01" placeholder="Dejar vacío para usar precio automático" class="w-full pl-12 pr-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 focus:bg-white focus:border-gray-400 focus:ring-4 focus:ring-gray-200 transition-all duration-200 outline-none font-medium" />
+            </div>
+          </div>
+
+          <button type="button" class="w-full mt-6 py-3 px-6 rounded-xl font-bold text-white bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 hover:from-blue-500 hover:to-blue-700 shadow-lg shadow-blue-500/40 transform transition-all duration-200 hover:-translate-y-1 flex items-center justify-center gap-2 group" onclick="agregarEmpastado()">
+            <span class="text-xl group-hover:scale-110 transition-transform">➕</span>
+            Agregar a la cotizacion
+          </button>
+        </div>
+
+        <!-- ========================================
+             🖼️ FORMULARIO: PLOTEO
+             ======================================== -->
+        <div id="formPloteo" class="form-servicio animate-fade-in-up" style="display: none;">
+          <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+            <span class="text-2xl">🖼️</span>
+            Ploteo
+          </h3>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <!-- Tipo de ploteo -->
+            <div class="group">
+              <label for="tipoPloteo" class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg text-xs">🎨</span> Tipo
+              </label>
+              <div class="relative">
+                <select id="tipoPloteo" class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none appearance-none font-medium">
+                  <option value="bond_bn">Bond - Blanco y Negro</option>
+                  <option value="bond_color">Bond - Color</option>
+                  <option value="bond_full_color">Bond - Full Color</option>
+                  <option value="cartonite">Cartonite</option>
+                  <option value="fotografico">Papel Fotográfico</option>
+                  <option value="canvas">Canvas</option>
+                  <option value="lona">Lona</option>
+                  <option value="cintra">Cintra</option>
+                </select>
+                <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500"><svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg></div>
+              </div>
+            </div>
+
+            <!-- Tamaño - Predefinido o personalizado -->
+            <div class="group">
+              <label for="opcionTamanoPloteo" class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg text-xs">📐</span> Tamaño
+              </label>
+              <div class="relative">
+                <select id="opcionTamanoPloteo" class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none appearance-none font-medium">
+                  <option value="predefinido">Tamaños predefinidos</option>
+                  <option value="personalizado">Tamaño personalizado</option>
+                </select>
+                <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500"><svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tamaños predefinidos -->
+          <div id="tamanosPredefinidos" class="mt-5">
+            <label for="tamanoPloteo" class="block text-sm font-bold text-gray-700 mb-2">Seleccionar tamaño</label>
+            <div class="relative">
+              <select id="tamanoPloteo" class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none appearance-none font-medium">
+                <option value="17x22">17x22</option>
+                <option value="18x24">18x24</option>
+                <option value="24x36">24x36</option>
+                <option value="36x48">36x48</option>
+              </select>
+              <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500"><svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg></div>
+            </div>
+          </div>
+
+          <!-- Tamaño personalizado -->
+          <div id="tamanoPersonalizado" class="mt-5 p-4 bg-gray-50 rounded-xl border border-gray-100" style="display: none;">
+            <div class="grid grid-cols-2 gap-4">
+              <div class="group">
+                <label for="anchoPloteo" class="block text-sm font-bold text-gray-700 mb-2">Ancho (pulgadas)</label>
+                <input type="number" id="anchoPloteo" min="1" step="0.1" placeholder="Ej: 24" class="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-gray-700 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none font-medium" />
+              </div>
+              <div class="group">
+                <label for="altoPloteo" class="block text-sm font-bold text-gray-700 mb-2">Alto (pulgadas)</label>
+                <input type="number" id="altoPloteo" min="1" step="0.1" placeholder="Ej: 36" class="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-gray-700 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none font-medium" />
+              </div>
+            </div>
+            <small class="text-xs text-gray-500 mt-2 block">Se calculará: (ancho × alto) ÷ 144 × precio/pie²</small>
+          </div>
+
+          <!-- Cantidad -->
+          <div class="mt-5">
+            <label for="cantidadPloteo" class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+              <span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg text-xs">🔢</span> Cantidad
+            </label>
+            <input type="number" id="cantidadPloteo" min="1" value="1" class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none font-medium" />
+          </div>
+
+          <!-- Precio calculado en tiempo real -->
+          <div class="precio-calculado mt-6 p-5 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-xl shadow-sm" id="precioPloteo" style="display: none;">
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-sm font-semibold text-gray-600">Precio unitario:</span>
+              <span class="text-lg font-bold text-blue-600 bg-white px-3 py-1 rounded-lg shadow-sm border border-blue-100" id="precioUnitarioPloteo">RD$0.00</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-sm font-bold text-gray-800">Total estimado:</span>
+              <span class="text-xl font-black text-indigo-700" id="precioTotalPloteo">RD$0.00</span>
+            </div>
+          </div>
+
+          <!-- Precio personalizado -->
+          <div class="mt-6 pt-6 border-t border-gray-100">
+            <label for="precioPersonalPloteo" class="block text-sm font-bold text-gray-500 mb-2 flex items-center gap-2">
+              <span class="bg-gray-100 text-gray-500 p-1.5 rounded-lg text-xs">💰</span> Precio personalizado (opcional)
+            </label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <span class="text-gray-400 font-bold">RD$</span>
+              </div>
+              <input type="number" id="precioPersonalPloteo" step="0.01" placeholder="Dejar vacío para usar precio automático" class="w-full pl-12 pr-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 focus:bg-white focus:border-gray-400 focus:ring-4 focus:ring-gray-200 transition-all duration-200 outline-none font-medium" />
+            </div>
+          </div>
+
+          <button type="button" class="w-full mt-6 py-3 px-6 rounded-xl font-bold text-white bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 hover:from-blue-500 hover:to-blue-700 shadow-lg shadow-blue-500/40 transform transition-all duration-200 hover:-translate-y-1 flex items-center justify-center gap-2 group" onclick="agregarPloteo()">
+            <span class="text-xl group-hover:scale-110 transition-transform">➕</span>
+            Agregar a la cotizacion
+          </button>
+        </div>
+
+        <!-- ========================================
+             💳 FORMULARIO: PLASTIFICADO
+             ======================================== -->
+        <div id="formPlastificado" class="form-servicio animate-fade-in-up" style="display: none;">
+          <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+            <span class="text-2xl">💳</span>
+            Plastificado
+          </h3>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <!-- Tamaño -->
+            <div class="group">
+              <label for="tamanoPlastificado" class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg text-xs">📐</span> Tamaño
+              </label>
+              <div class="relative">
+                <select id="tamanoPlastificado" class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none appearance-none font-medium">
+                  <option value="cedula">Cédula - RD$30</option>
+                  <option value="carta">Carta (8.5x11) - RD$40</option>
+                  <option value="legal">Legal (8.5x14) - RD$50</option>
+                  <option value="tabloide">Tabloide (11x17) - RD$60</option>
+                </select>
+                <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500"><svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg></div>
+              </div>
+            </div>
+
+            <!-- ¿Lleva corte? -->
+            <div class="group">
+              <label for="llevaCorte" class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg text-xs">✂️</span> ¿Lleva corte?
+              </label>
+              <div class="relative">
+                <select id="llevaCorte" class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none appearance-none font-medium">
+                  <option value="no">No</option>
+                  <option value="si">Sí (se cobra por pieza individual)</option>
+                </select>
+                <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500"><svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg></div>
+              </div>
+              <small class="text-xs text-gray-400 mt-1 ml-1">Ejemplo: 10 hojas × 4 tarjetas = se cobra por 40 tarjetas</small>
+            </div>
+          </div>
+
+          <!-- Cantidad de piezas (si lleva corte) -->
+          <div id="seccionPiezas" class="mt-5 p-4 bg-yellow-50 rounded-xl border border-yellow-100" style="display: none;">
+            <label for="cantidadPiezas" class="block text-sm font-bold text-yellow-800 mb-2">🔢 Cantidad de piezas por hoja</label>
+            <input type="number" id="cantidadPiezas" min="1" value="2" placeholder="Ej: 4 tarjetas por hoja" class="w-full px-4 py-3 rounded-xl bg-white border border-yellow-200 text-gray-700 focus:border-yellow-500 focus:ring-4 focus:ring-yellow-500/10 transition-all duration-200 outline-none font-medium" />
+            <small class="text-xs text-yellow-600 mt-1 block">¿Cuántas piezas se cortan de cada hoja?</small>
+          </div>
+
+          <!-- Cantidad de hojas -->
+          <div class="mt-5">
+            <label for="cantidadPlastificado" class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+              <span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg text-xs">📄</span> Cantidad de hojas
+            </label>
+            <input type="number" id="cantidadPlastificado" min="1" value="1" class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none font-medium" />
+          </div>
+
+          <!-- Precio calculado en tiempo real -->
+          <div class="precio-calculado mt-6 p-5 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-xl shadow-sm" id="precioPlastificado" style="display: none;">
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-sm font-semibold text-gray-600">Precio unitario:</span>
+              <span class="text-lg font-bold text-blue-600 bg-white px-3 py-1 rounded-lg shadow-sm border border-blue-100" id="precioUnitarioPlastificado">RD$0.00</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-sm font-bold text-gray-800">Total estimado:</span>
+              <span class="text-xl font-black text-indigo-700" id="precioTotalPlastificado">RD$0.00</span>
+            </div>
+          </div>
+
+          <!-- Precio personalizado -->
+          <div class="mt-6 pt-6 border-t border-gray-100">
+            <label for="precioPersonalPlastificado" class="block text-sm font-bold text-gray-500 mb-2 flex items-center gap-2">
+              <span class="bg-gray-100 text-gray-500 p-1.5 rounded-lg text-xs">💰</span> Precio personalizado (opcional)
+            </label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <span class="text-gray-400 font-bold">RD$</span>
+              </div>
+              <input type="number" id="precioPersonalPlastificado" step="0.01" placeholder="Dejar vacío para usar precio automático" class="w-full pl-12 pr-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 focus:bg-white focus:border-gray-400 focus:ring-4 focus:ring-gray-200 transition-all duration-200 outline-none font-medium" />
+            </div>
+          </div>
+
+          <button type="button" class="w-full mt-6 py-3 px-6 rounded-xl font-bold text-white bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 hover:from-blue-500 hover:to-blue-700 shadow-lg shadow-blue-500/40 transform transition-all duration-200 hover:-translate-y-1 flex items-center justify-center gap-2 group" onclick="agregarPlastificado()">
+            <span class="text-xl group-hover:scale-110 transition-transform">➕</span>
+            Agregar a la cotizacion
+          </button>
+        </div>
+        
+
+        <!-- ========================================
+             📘 FORMULARIO: LIBRO COMPLETO (MEJORADO)
+             ======================================== -->
+        <div id="formLibro" class="form-servicio animate-fade-in-up" style="display: none;">
+          <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+            <span class="text-2xl">📘</span>
+            Libro Completo (Impresión + Terminación)
+          </h3>
+
+          <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6 text-sm text-blue-800 flex gap-3 items-start">
+            <span class="text-xl">💡</span>
+            <p><strong>Ejemplo:</strong> 1 portada a color + 99 páginas B/N + encuadernado = 100 páginas totales</p>
+          </div>
+
+          <!-- SECCIÓN: IMPRESIÓN BLANCO Y NEGRO -->
+          <div class="mb-6 pb-6 border-b border-gray-100">
+            <h4 class="text-md font-bold text-gray-700 mb-4 flex items-center gap-2">
+              <span class="bg-gray-200 text-gray-700 p-1 rounded text-xs">⚫</span>
+              Páginas Blanco y Negro
+            </h4>
+            
+            <div>
+              <label for="libroPaginasBN" class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg text-xs">🔢</span>
+                Cantidad de páginas B/N
+              </label>
+              <input type="number" id="libroPaginasBN" min="0" value="0" placeholder="Ej: 99" class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none font-medium" />
+              <small class="text-xs text-gray-400 mt-1 ml-1">Deja en 0 si no hay páginas B/N</small>
+            </div>
+          </div>
+
+          <!-- SECCIÓN: IMPRESIÓN COLOR -->
+          <div class="mb-6 pb-6 border-b border-gray-100">
+            <h4 class="text-md font-bold text-gray-700 mb-4 flex items-center gap-2">
+              <span class="bg-pink-100 text-pink-600 p-1 rounded text-xs">🎨</span>
+              Páginas a Color
+            </h4>
+            
+            <div>
+              <label for="libroPaginasColor" class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg text-xs">🔢</span>
+                Cantidad de páginas a Color
+              </label>
+              <input type="number" id="libroPaginasColor" min="0" value="0" placeholder="Ej: 1 (portada)" class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none font-medium" />
+              <small class="text-xs text-gray-400 mt-1 ml-1">Deja en 0 si no hay páginas a color</small>
+            </div>
+          </div>
+
+          <!-- SECCIÓN: IMPRESIÓN FULL COLOR -->
+          <div class="mb-6 pb-6 border-b border-gray-100">
+            <h4 class="text-md font-bold text-gray-700 mb-4 flex items-center gap-2">
+              <span class="bg-purple-100 text-purple-600 p-1 rounded text-xs">🌈</span>
+              Páginas Full Color
+            </h4>
+            
+            <div>
+              <label for="libroPaginasFullColor" class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg text-xs">🔢</span>
+                Cantidad de páginas Full Color
+              </label>
+              <input type="number" id="libroPaginasFullColor" min="0" value="0" placeholder="Ej: 0" class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none font-medium" />
+              <small class="text-xs text-gray-400 mt-1 ml-1">Deja en 0 si no hay páginas full color</small>
+            </div>
+          </div>
+
+          <!-- SECCIÓN: CONFIGURACIÓN GENERAL -->
+          <div class="mb-6">
+            <h4 class="text-md font-bold text-gray-700 mb-4 flex items-center gap-2">
+              <span class="bg-gray-200 text-gray-700 p-1 rounded text-xs">⚙️</span>
+              Configuración del Libro
+            </h4>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div class="group">
+                <label for="libroTamano" class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                  <span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg text-xs">📐</span> Tamaño
+                </label>
+                <div class="relative">
+                  <select id="libroTamano" class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none appearance-none font-medium">
+                    <option value="carta">Carta (8½ x 11)</option>
+                    <option value="legal">Legal (8½ x 14)</option>
+                    <option value="tabloide">Tabloide (11 x 17)</option>
+                  </select>
+                  <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500"><svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg></div>
+                </div>
+              </div>
+
+              <div class="group">
+                <label for="libroTerminacion" class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                  <span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg text-xs">📚</span> Terminación
+                </label>
+                <div class="relative">
+                  <select id="libroTerminacion" class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none appearance-none font-medium">
+                    <option value="ninguna">Sin terminación (solo impresión)</option>
+                    <option value="espiral">Encuadernado espiral</option>
+                    <option value="tapa_blanda">Empastado tapa blanda</option>
+                    <option value="tapa_dura">Empastado tapa dura</option>
+                  </select>
+                  <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500"><svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg></div>
+                </div>
+                <small class="text-xs text-gray-400 mt-1 ml-1">Tapa blanda solo disponible en carta</small>
+              </div>
+
+              <div class="group md:col-span-2">
+                <label for="libroJuegos" class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                  <span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg text-xs">📚</span> Número de copias/juegos
+                </label>
+                <input type="number" id="libroJuegos" min="1" value="1" placeholder="¿Cuántos libros iguales?" class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none font-medium" />
+                <small class="text-xs text-gray-400 mt-1 ml-1">Todos los costos se multiplicarán por este número</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- RESUMEN AUTOMÁTICO -->
+          <div class="resumen-libro mt-6 p-5 bg-indigo-50 border border-indigo-100 rounded-xl" id="resumenLibro" style="display: none;">
+            <h4 class="text-lg font-bold text-indigo-800 mb-3 flex items-center gap-2">📊 Resumen del Libro</h4>
+            <div class="text-sm text-indigo-700 space-y-1" id="resumenContent"></div>
+          </div>
+
+          <button type="button" class="w-full mt-6 py-3 px-6 rounded-xl font-bold text-white bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 hover:from-blue-500 hover:to-blue-700 shadow-lg shadow-blue-500/40 transform transition-all duration-200 hover:-translate-y-1 flex items-center justify-center gap-2 group" onclick="agregarLibro()">
+            <span class="text-xl group-hover:scale-110 transition-transform">➕</span>
+            Agregar Libro a la cotizacion
+          </button>
+        </div>
+
+        <!-- ========================================
+             🛠️ FORMULARIO: PERSONALIZADO
+             ======================================== -->
+        <div id="formPersonalizado" class="form-servicio animate-fade-in-up" style="display: none;">
+          <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+            <span class="text-2xl">🛠️</span>
+            Servicio Personalizado
+          </h3>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <!-- Descripción -->
+            <div class="group md:col-span-2">
+              <label for="descPersonalizado" class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg text-xs">📝</span> Descripción del servicio
+              </label>
+              <input type="text" id="descPersonalizado" placeholder="Ej: Letrero 2x4 pies, Diseño gráfico, etc." class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none font-medium" />
+            </div>
+
+            <!-- Cantidad -->
+            <div class="group">
+              <label for="cantPersonalizado" class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg text-xs">🔢</span> Cantidad
+              </label>
+              <input type="number" id="cantPersonalizado" min="1" value="1" class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none font-medium" />
+            </div>
+
+            <!-- Precio Unitario -->
+            <div class="group">
+              <label for="precioPersonalizado" class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg text-xs">💰</span> Precio Unitario (RD$)
+              </label>
+              <input type="number" id="precioPersonalizado" min="0" step="0.01" placeholder="0.00" class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none font-medium" />
+            </div>
+          </div>
+
+          <!-- Precio calculado en tiempo real -->
+          <div class="precio-calculado mt-6 p-5 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-xl shadow-sm" id="resumenPersonalizado" style="display: none;">
+            <div class="flex justify-between items-center">
+              <span class="text-sm font-bold text-gray-800">Total estimado:</span>
+              <span class="text-xl font-black text-indigo-700" id="totalPersonalizado">RD$0.00</span>
+            </div>
+          </div>
+
+          <button type="button" class="w-full mt-6 py-3 px-6 rounded-xl font-bold text-white bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 hover:from-blue-500 hover:to-blue-700 shadow-lg shadow-blue-500/40 transform transition-all duration-200 hover:-translate-y-1 flex items-center justify-center gap-2 group" onclick="agregarPersonalizado()">
+            <span class="text-xl group-hover:scale-110 transition-transform">➕</span>
+            Agregar a la cotizacion
+          </button>
+        </div>
+
+      </div>
+
+      
+    </section>
+
+    <servigaco-footer></servigaco-footer>
+  </main>
+
+  <!-- ========================================
+       📂 MODAL PARA COTIZACIONES GUARDADAS
+       ======================================== -->
+  <div id="modalCotizacionesGuardadas" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 hidden animate-fade-in">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col animate-slide-in-up m-4">
+      <!-- Header del Modal -->
+      <div class="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center flex-shrink-0">
+        <h3 class="text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-3">
+          <span class="text-3xl">📂</span>
+          Cotizaciones Guardadas
+        </h3>
+        <button id="btnCerrarModal" class="p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-200 transition-all" aria-label="Cerrar modal">
+          <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <!-- Contenido del Modal (lista) -->
+      <div class="p-2 md:p-6 overflow-y-auto" id="listaCotizacionesGuardadas">
+        <!-- La lista de cotizaciones se generará aquí con JavaScript -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================
+       🧾 MODAL DE FACTURACIÓN (NUEVO)
+       ======================================== -->
+  <div id="modalFacturacion" class="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-[60] hidden animate-fade-in">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg m-4 flex flex-col animate-slide-in-up border border-gray-200 dark:border-gray-700">
+      
+      <div class="p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-600 to-blue-800 rounded-t-2xl">
+        <h3 class="text-xl font-bold text-white flex items-center gap-2">
+          <span>🧾</span> Generar Factura Fiscal
+        </h3>
+        <p class="text-blue-100 text-sm mt-1">Convierte la cotización en una factura válida para DGII</p>
+      </div>
+
+      <div class="p-6 space-y-5">
+        <!-- Búsqueda de RNC -->
+        <div class="relative">
+          <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Buscar Cliente (RNC o Nombre)</label>
+          <div class="flex gap-2">
+            <input type="text" id="inputRNCFactura" placeholder="Escribe nombre o RNC..." autocomplete="off" class="flex-1 px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 outline-none font-mono text-lg dark:text-white" />
+            <button id="btnBuscarRNC" class="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold">🔍</button>
+          </div>
+          
+          <!-- 🔽 LISTA DE RESULTADOS (DROPDOWN) -->
+          <div id="listaResultadosClientes" class="absolute left-0 right-0 top-[85px] bg-white dark:bg-gray-800 shadow-2xl rounded-xl border border-gray-200 dark:border-gray-600 max-h-60 overflow-y-auto z-50 hidden">
+            <!-- Los resultados se inyectarán aquí con JS -->
+          </div>
+
+          <p id="infoClienteRNC" class="text-sm text-green-600 font-bold mt-2 hidden">✅ Cliente encontrado</p>
+        </div>
+
+        <!-- Nombre / Razón Social -->
+        <div>
+          <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Razón Social / Nombre</label>
+          <input type="text" id="inputNombreFactura" class="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 outline-none font-bold text-gray-800 dark:text-white" />
+        </div>
+
+        <!-- Tipo de NCF -->
+        <div>
+          <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Tipo de Comprobante (NCF)</label>
+          <select id="selectTipoNCF" class="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 outline-none dark:text-white">
+            <option value="B02">B02 - Consumo Final (Personal)</option>
+            <option value="B01">B01 - Crédito Fiscal (Empresas)</option>
+            <option value="B15">B15 - Gubernamental</option>
+            <option value="B14">B14 - Regímenes Especiales</option>
+          </select>
+          <p id="previewProximoNCF" class="text-xs text-blue-600 font-bold mt-2 text-right">Cargando secuencia...</p>
+        </div>
+
+        <!-- Resumen -->
+        <div class="bg-gray-100 dark:bg-gray-700 p-4 rounded-xl text-right">
+          <p class="text-sm text-gray-500 dark:text-gray-400">Monto a Facturar</p>
+          <p class="text-2xl font-black text-gray-800 dark:text-white" id="montoTotalFactura">RD$0.00</p>
+        </div>
+      </div>
+
+      <div class="p-6 border-t border-gray-200 dark:border-gray-700 flex gap-3 justify-end bg-gray-50 dark:bg-gray-800/50 rounded-b-2xl">
+        <button id="btnCancelarFactura" class="px-5 py-2.5 rounded-xl font-bold text-gray-600 hover:bg-gray-200 transition-colors">Cancelar</button>
+        <button id="btnConfirmarFactura" class="px-6 py-2.5 rounded-xl font-bold text-white bg-green-600 hover:bg-green-700 shadow-lg shadow-green-500/30 transition-all transform hover:-translate-y-1">✅ Emitir Factura</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================
+       📜 MODAL DE FACTURAS EMITIDAS (HISTORIAL)
+       ======================================== -->
+  <div id="modalFacturasEmitidas" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 hidden animate-fade-in">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col animate-slide-in-up m-4">
+      <!-- Header -->
+      <div class="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center flex-shrink-0 bg-gradient-to-r from-purple-600 to-purple-800 rounded-t-2xl text-white">
+        <div>
+          <h3 class="text-2xl font-bold flex items-center gap-3">
+            <span class="text-3xl">📜</span>
+            Historial de Facturas
+          </h3>
+          <p class="text-purple-100 text-sm mt-1">Registro de comprobantes fiscales emitidos</p>
+        </div>
+        <button id="btnCerrarModalFacturas" class="p-2 rounded-full text-white hover:bg-white/20 transition-all">
+          <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      
+      <!-- Toolbar -->
+      <div class="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex flex-wrap gap-4 justify-between items-center">
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-2">
+            <label class="text-sm font-bold text-gray-600 dark:text-gray-300">Filtrar por Mes:</label>
+            <input type="month" id="filtroMesFacturas" class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 text-sm focus:ring-2 focus:ring-purple-500 outline-none">
+          </div>
+          <div class="flex items-center gap-2 border-l border-gray-300 dark:border-gray-600 pl-4">
+            <input type="checkbox" id="checkOcultarAnuladas" class="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500 cursor-pointer">
+            <label for="checkOcultarAnuladas" class="text-sm font-bold text-gray-600 dark:text-gray-300 cursor-pointer select-none">Ocultar Anuladas</label>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <button id="btnBackupFacturas" class="px-4 py-2 bg-gray-700 hover:bg-gray-800 text-white rounded-lg font-bold text-sm flex items-center gap-2 shadow-sm transition-all" title="Descargar copia de seguridad completa">
+            <span>💾</span> Backup JSON
+          </button>
+          <button id="btnReporteDiario" class="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-bold text-sm flex items-center gap-2 shadow-sm transition-all">
+            <span>📅</span> Ventas Hoy
+          </button>
+          <button id="btnExportar607" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold text-sm flex items-center gap-2 shadow-sm transition-all">
+            <span>📊</span> Reporte 607
+          </button>
+          <button id="btnReporteIT1Excel" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-sm flex items-center gap-2 shadow-sm transition-all">
+            <span>📗</span> IT-1 Excel
+          </button>
+          <button id="btnReporteIT1PDF" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold text-sm flex items-center gap-2 shadow-sm transition-all">
+            <span>📕</span> IT-1 PDF
+          </button>
+        </div>
+      </div>
+
+      <!-- Lista -->
+      <div class="p-0 overflow-y-auto flex-grow bg-gray-100 dark:bg-gray-900">
+        <div id="listaFacturas" class="p-4 space-y-3">
+          <!-- Items inyectados por JS -->
+        </div>
+      </div>
+      
+      <!-- Footer -->
+      <div class="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-b-2xl text-right">
+        <span class="text-lg font-bold text-gray-700 dark:text-gray-200" id="totalFacturasMes">Total Facturado: RD$0.00</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================
+       🚫 MODAL CONFIRMACIÓN ANULACIÓN (SEGURIDAD)
+       ======================================== -->
+  <div id="modalConfirmarAnulacion" class="fixed inset-0 bg-gray-900 bg-opacity-90 flex items-center justify-center z-[70] hidden animate-fade-in">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md m-4 p-6 animate-slide-in-up border border-red-200 dark:border-red-900">
+      <div class="text-center mb-6">
+        <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">⚠️</div>
+        <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-2">¿Confirmar Anulación?</h3>
+        <p class="text-gray-600 dark:text-gray-300 text-sm">Esta acción es irreversible. Se generará una Nota de Crédito (B04).</p>
+        <p class="text-gray-500 dark:text-gray-400 text-xs mt-2">Escribe <span class="font-bold text-red-600 select-all">anular</span> abajo para confirmar.</p>
+      </div>
+      
+      <input type="text" id="inputConfirmacionAnular" placeholder="Escribe 'anular'" class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-300 focus:ring-2 focus:ring-red-500 outline-none text-center font-bold text-lg mb-6 dark:bg-gray-700 dark:border-gray-600 dark:text-white" autocomplete="off">
+      
+      <div class="flex gap-3">
+        <button id="btnCancelarAnulacion" class="flex-1 px-4 py-2.5 rounded-xl font-bold text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors">Cancelar</button>
+        <button id="btnEjecutarAnulacion" class="flex-1 px-4 py-2.5 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 shadow-lg shadow-red-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed" disabled>🚫 Anular Factura</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================
+       🗑️ MODAL CONFIRMACIÓN ELIMINAR COTIZACIÓN
+       ======================================== -->
+  <div id="modalConfirmarEliminar" class="fixed inset-0 bg-gray-900 bg-opacity-90 flex items-center justify-center z-[80] hidden animate-fade-in">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm m-4 p-6 animate-slide-in-up border border-gray-200 dark:border-gray-700 text-center">
+      <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">🗑️</div>
+      <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-2">¿Eliminar Cotización?</h3>
+      <p class="text-gray-600 dark:text-gray-300 text-sm mb-6">¿Estás seguro de eliminar <span id="nombreCotizacionEliminar" class="font-bold text-gray-800 dark:text-white">esta cotización</span>?<br>Esta acción no se puede deshacer.</p>
+      
+      <div class="flex gap-3 justify-center">
+        <button id="btnCancelarEliminar" class="px-5 py-2.5 rounded-xl font-bold text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors">Cancelar</button>
+        <button id="btnConfirmarEliminar" class="px-5 py-2.5 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 shadow-lg shadow-red-500/30 transition-all transform hover:-translate-y-1">Sí, Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================
+       🧹 MODAL CONFIRMACIÓN LIMPIAR - Reemplazo de Confirm
+       ======================================== -->
+  <div id="modalConfirmarLimpiar" class="fixed inset-0 bg-gray-900 bg-opacity-90 flex items-center justify-center z-[80] hidden animate-fade-in">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm m-4 p-6 animate-slide-in-up border border-gray-200 dark:border-gray-700 text-center">
+      <div class="w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">🧹</div>
+      <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-2">¿Limpiar Todo?</h3>
+      <p id="textoConfirmarLimpiar" class="text-gray-600 dark:text-gray-300 text-sm mb-6">Se borrarán todos los datos actuales.</p>
+      
+      <div class="flex gap-3 justify-center">
+        <button id="btnCancelarLimpiar" class="flex-1 px-5 py-2.5 rounded-xl font-bold text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors">Cancelar</button>
+        <button id="btnEjecutarLimpiar" class="flex-1 px-5 py-2.5 rounded-xl font-bold text-white bg-orange-600 hover:bg-orange-700 shadow-lg shadow-orange-500/30 transition-all transform hover:-translate-y-1">Sí, Limpiar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================
+       🔐 MODAL LOGIN (EMPLEADOS)
+       ======================================== -->
+  <div id="modalLogin" class="fixed inset-0 bg-gray-900 bg-opacity-90 flex items-center justify-center z-[2000] hidden animate-fade-in">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm m-4 p-8 animate-slide-in-up border border-blue-200 dark:border-blue-900">
+      <div class="text-center mb-6">
+        <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">🔐</div>
+        <h3 class="text-xl font-bold text-gray-800 dark:text-white">Acceso Autorizado</h3>
+        <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">Ingresa tus credenciales para facturar.</p>
+      </div>
+      
+      <form id="formLogin" class="space-y-4">
+        <input type="text" id="usuarioLogin" placeholder="Usuario (ej: admin)" class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
+        <input type="password" id="passwordLogin" placeholder="Contraseña" class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
+        <button type="submit" class="w-full py-3 rounded-xl font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-lg transition-all transform hover:-translate-y-1">Iniciar Sesión</button>
+      </form>
+      <button id="btnCerrarLogin" class="w-full mt-4 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- Scripts para PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <!-- EXCEL (SheetJS) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <!-- 🔥 FIREBASE SDK (Base de Datos) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+
+  <script src="components.js"></script>
+  <script src="scriptgeneral.js"></script>
+  
+</body>
+</html>
