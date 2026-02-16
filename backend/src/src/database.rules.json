@@ -1,0 +1,33 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "maestro_contribuyentes": {
+      ".read": true,
+      ".write": false,
+      ".indexOn": ["n"]
+    },
+    "facturas": {
+      ".read": true,
+      ".write": true,
+      ".indexOn": ["fecha_facturacion", "ncf", "rnc_cliente"]
+    },
+    "cotizaciones": {
+      ".read": true,
+      ".write": true,
+      ".indexOn": ["timestamp", "nombre"]
+    },
+    "secuencias_ncf": {
+      ".read": true,
+      ".write": true
+    },
+    "ventas_log": {
+      ".read": true,
+      ".write": true
+    },
+    "diagnostico": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}
