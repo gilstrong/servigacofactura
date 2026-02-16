@@ -2,72 +2,56 @@ const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');
 
-// Función auxiliar para cargar imágenes en Base64 (Logo, Firma, Sello)
-const getImageBase64 = (filename) => {
+let browser;
+
+// Inicializar el navegador globalmente (Patrón Singleton)
+(async () => {
     try {
-        const imagePath = path.join(__dirname, '../../../public/assets/', filename);
-        if (fs.existsSync(imagePath)) {
-            const bitmap = fs.readFileSync(imagePath);
+        browser = await puppeteer.launch({
+            headless: true,
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-gpu',
+                '--disable-dev-shm-usage',
+                '--disable-accelerated-2d-canvas',
+                '--no-first-run',
+                '--no-zygote',
+                '--single-process',
+                '--font-render-hinting=none'
+            ]
+        });
+        console.log("🚀 Navegador Puppeteer iniciado globalmente.");
+    } catch (e) {
+        console.error("❌ Error al iniciar el navegador global:", e);
+    }
+})();
+
+// Función auxiliar para cargar logo en Base64
+const getLogoBase64 = () => {
+    try {
+        const logoPath = path.join(__dirname, '../../../public/assets/logo.png');
+        if (fs.existsSync(logoPath)) {
+            const bitmap = fs.readFileSync(logoPath);
             return `data:image/png;base64,${bitmap.toString('base64')}`;
         }
-    } catch (e) { console.error(`Error cargando imagen ${filename}:`, e); }
+    } catch (e) { console.error("Error cargando logo:", e); }
     return null;
 };
 
 const generarPDF = async (req, res) => {
-    let browser = null;
+    let page = null;
     try {
         console.log("🔵 [PDF] Solicitud recibida. Datos:", req.body ? "OK" : "VACÍO");
         const data = req.body || {};
         
         // 1. Preparar datos y Logo
-        const logoSrc = getImageBase64('logo.png');
-        const selloSrc = getImageBase64('sello.png');
-        const firmaSrc = getImageBase64('firma.png');
-        const { ncf, fecha, cliente, items, subtotal, impuestos, total, tituloDocumento, condicion, vencimiento, abono } = data;
+        const logoSrc = getLogoBase64();
+        const { ncf, fecha, cliente, items, subtotal, impuestos, total, tituloDocumento, condicion } = data;
         
         // Validación de seguridad para evitar crash si items es undefined
         const listaItems = Array.isArray(items) ? items : [];
         const datosCliente = cliente || {};
-
-        // Detectar si es venta a crédito para mostrar saldo pendiente
-        const esCredito = (condicion || '').toLowerCase().includes('credito');
-        const montoAbono = parseFloat(abono || 0);
-        const montoPendiente = parseFloat(total || 0) - montoAbono;
-
-        // Lógica inteligente para fecha de vencimiento
-        let fechaVencimiento = vencimiento;
-
-        // 1. Si es crédito y no hay fecha, calcularla automáticamente
-        if (esCredito && (!fechaVencimiento || fechaVencimiento === 'N/A')) {
-            const diasMatch = (condicion || '').match(/\d+/);
-            const dias = diasMatch ? parseInt(diasMatch[0], 10) : 30; // Default 30 días si no especifica
-            
-            if (fecha && typeof fecha === 'string') {
-                try {
-                    // Soportar formatos DD/MM/YYYY y YYYY-MM-DD
-                    let fechaObj;
-                    if (fecha.includes('/')) {
-                        const [dia, mes, anio] = fecha.split('/').map(Number);
-                        fechaObj = new Date(anio, mes - 1, dia);
-                    } else {
-                        const [anio, mes, dia] = fecha.split('-').map(Number);
-                        fechaObj = new Date(anio, mes - 1, dia);
-                    }
-                    
-                    if (!isNaN(fechaObj.getTime())) {
-                        fechaObj.setDate(fechaObj.getDate() + dias);
-                        fechaVencimiento = fechaObj.toLocaleDateString('es-DO');
-                    }
-                } catch (e) { /* Fallback silencioso */ }
-            }
-        }
-
-        // 2. Formatear si viene como YYYY-MM-DD para que se vea bonita (DD/MM/YYYY)
-        if (fechaVencimiento && typeof fechaVencimiento === 'string' && fechaVencimiento.match(/^\d{4}-\d{2}-\d{2}$/)) {
-            const [y, m, d] = fechaVencimiento.split('-');
-            fechaVencimiento = `${d}/${m}/${y}`;
-        }
 
         // 2. Construir HTML
         const rows = listaItems.map((item, i) => `
@@ -147,22 +131,6 @@ const generarPDF = async (req, res) => {
                 .total-final-label { font-size: 14px; font-weight: 900; color: #1e293b; }
                 .total-final-value { font-size: 18px; font-weight: 900; color: #2563eb; }
 
-                /* Signatures */
-                .signatures-section { margin-top: 60px; display: flex; justify-content: space-between; page-break-inside: avoid; }
-                .signature-box { width: 200px; text-align: center; position: relative; }
-                .signature-line { border-top: 1px solid #333; padding-top: 5px; font-size: 12px; font-weight: bold; color: #333; }
-                .signature-image { height: 60px; width: auto; margin-bottom: -10px; position: relative; z-index: 10; }
-                .seal-image { 
-                    position: absolute; 
-                    top: -50px; 
-                    left: 50%; 
-                    transform: translateX(-50%) rotate(-5deg); 
-                    height: 110px; 
-                    width: auto; 
-                    opacity: 0.8; 
-                    z-index: 5; 
-                }
-
                 /* Footer */
                 .footer { position: fixed; bottom: 40px; left: 40px; right: 40px; text-align: center; font-size: 10px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 15px; }
             </style>
@@ -174,19 +142,13 @@ const generarPDF = async (req, res) => {
                     <p>
                         <strong>CENTRO DE COPIADO S & C, SRL</strong><br>
                         RNC: 131-27958-9<br>
-                        Av. Independencia esq. Héroes de Luperón<br>
-                        Tel: 809-682-1075
+                        Av. Independencia esq. Héroes de Luperón
                     </p>
                 </div>
                 <div class="invoice-details">
                     <h1 class="invoice-title">${tituloDocumento || 'FACTURA'}</h1>
                     <div class="meta-item"><span class="meta-label">NCF:</span><span class="meta-value" style="color: #2563eb;">${ncf || 'N/A'}</span></div>
                     <div class="meta-item"><span class="meta-label">Fecha:</span><span class="meta-value">${fecha}</span></div>
-                    ${esCredito && fechaVencimiento ? `
-                    <div class="meta-item">
-                        <span class="meta-label" style="color: #dc2626;">Vence:</span>
-                        <span class="meta-value" style="color: #dc2626;">${fechaVencimiento}</span>
-                    </div>` : ''}
                     <div class="meta-item"><span class="meta-label">Condición:</span><span class="meta-value" style="text-transform: capitalize;">${condicion || 'Contado'}</span></div>
                 </div>
             </div>
@@ -194,7 +156,7 @@ const generarPDF = async (req, res) => {
             <div class="client-box">
                 <div class="client-label">Facturado a:</div>
                 <div class="client-name">${datosCliente.nombre || 'Cliente General'}</div>
-                <div class="client-meta">RNC/Cédula: <strong>${datosCliente.rnc || 'N/A'}</strong> • Tel: ${datosCliente.telefono || 'N/A'}</div>
+                <div class="client-meta">RNC/Cédula: ${datosCliente.rnc || 'N/A'} • Tel: ${datosCliente.telefono || 'N/A'}</div>
             </div>
 
             <table>
@@ -220,30 +182,7 @@ const generarPDF = async (req, res) => {
                         <td class="total-final-label">TOTAL:</td>
                         <td class="total-final-value">RD$ ${parseFloat(total || 0).toLocaleString('es-DO', {minimumFractionDigits: 2})}</td>
                     </tr>
-                    ${esCredito ? `
-                    ${montoAbono > 0 ? `
-                    <tr>
-                        <td class="label" style="color: #16a34a; padding-top: 5px;">Abonado:</td>
-                        <td class="value" style="color: #16a34a; padding-top: 5px;">RD$ ${montoAbono.toLocaleString('es-DO', {minimumFractionDigits: 2})}</td>
-                    </tr>` : ''}
-                    <tr>
-                        <td class="label" style="color: #dc2626; padding-top: 5px;">Pendiente:</td>
-                        <td class="value" style="color: #dc2626; padding-top: 5px; font-weight: bold;">RD$ ${montoPendiente.toLocaleString('es-DO', {minimumFractionDigits: 2})}</td>
-                    </tr>` : ''}
                 </table>
-            </div>
-
-            <div class="signatures-section">
-                <div class="signature-box">
-                    <div style="height: 50px;"></div>
-                    <div class="signature-line">Recibido Conforme</div>
-                </div>
-                
-                <div class="signature-box">
-                    ${selloSrc ? `<img src="${selloSrc}" class="seal-image" />` : ''}
-                    ${firmaSrc ? `<img src="${firmaSrc}" class="signature-image" />` : '<div style="height: 50px;"></div>'}
-                    <div class="signature-line">Firma Autorizada</div>
-                </div>
             </div>
 
             <div class="footer">Documento generado electrónicamente por ServiGaco System.</div>
@@ -252,17 +191,26 @@ const generarPDF = async (req, res) => {
         `;
 
         // 3. Generar PDF con Puppeteer
-        browser = await puppeteer.launch({
-            headless: 'new',
-            args: [
-                '--no-sandbox', 
-                '--disable-setuid-sandbox',
-                '--disable-gpu',            // Vital para evitar errores de renderizado
-                '--disable-dev-shm-usage',   // Evita problemas de memoria en el proceso
-                '--font-render-hinting=none' // Optimización de fuentes
-            ]
-        });
-        const page = await browser.newPage();
+        // Verificar si el navegador está conectado, si no, reiniciarlo
+        if (!browser || !browser.isConnected()) {
+            console.log("⚠️ Navegador desconectado o no inicializado, relanzando...");
+            browser = await puppeteer.launch({
+                headless: true,
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-gpu',
+                    '--disable-dev-shm-usage',
+                    '--disable-accelerated-2d-canvas',
+                    '--no-first-run',
+                    '--no-zygote',
+                    '--single-process',
+                    '--font-render-hinting=none'
+                ]
+            });
+        }
+
+        page = await browser.newPage();
         
         // CAMBIO: Usamos 'domcontentloaded' para evitar que se cuelgue esperando recursos
         await page.setContent(htmlContent, { waitUntil: 'domcontentloaded', timeout: 60000 });
@@ -301,7 +249,7 @@ const generarPDF = async (req, res) => {
             res.status(500).json({ error: "Error al generar el PDF", details: error.message });
         }
     } finally {
-        if (browser) await browser.close();
+        if (page) await page.close();
     }
 };
 
