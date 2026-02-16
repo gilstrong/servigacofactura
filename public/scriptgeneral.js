@@ -21,6 +21,13 @@ console.log('🚀 Script cargando...');
 const ACTIVAR_SEGURIDAD = true; 
 
 // ============================================
+// 🌐 CONFIGURACIÓN API (AUTO-DETECTAR PUERTO)
+// ============================================
+const API_BASE_URL = (window.location.port === '5500' || window.location.port === '5501')
+  ? 'http://localhost:3000' // Si estamos en Live Server, apuntar al backend
+  : '';                     // Si estamos en el backend, usar ruta relativa
+
+// ============================================
 // 🔥 CONFIGURACIÓN DE FIREBASE (BASE DE DATOS)
 // ============================================
 const firebaseConfig = {
@@ -408,18 +415,18 @@ function actualizarCotizacion() {
   if (footerTabla) footerTabla.style.display = 'table-footer-group';
 
   const subtotal = cotizacion.reduce((sum, item) => sum + item.precio, 0);
-  const tipoComp = document.getElementById('tipoComprobante')?.value || 'ninguno';
+  // MODIFICADO: Usar un checkbox simple para ITBIS en lugar de un dropdown complejo.
+  const aplicarItbis = document.getElementById('checkAplicarItbis')?.checked || false;
 
   let impuesto = 0;
   let nombreImpuesto = '';
-  if (tipoComp === 'fiscal') { impuesto = subtotal * 0.18; nombreImpuesto = 'ITBIS (18%)'; }
-  else if (tipoComp === 'gubernamental') { impuesto = subtotal * 0.10; nombreImpuesto = 'ISR (10%)'; }
+  if (aplicarItbis) { impuesto = subtotal * 0.18; nombreImpuesto = 'ITBIS (18%)'; }
 
   const total = subtotal + impuesto;
 
   if (subtotalEl) subtotalEl.textContent = `RD$${subtotal.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
 
-  if (tipoComp !== 'ninguno') {
+  if (aplicarItbis) {
     if (subtotalRow) subtotalRow.style.display = 'table-row';
     if (impuestoRow) {
       impuestoRow.style.display = 'table-row';
@@ -890,15 +897,12 @@ function generarCotizacion() {
   });
 
   const subtotal = cotizacion.reduce((s, i) => s + i.precio, 0);
-  const tipoC = document.getElementById('tipoComprobante')?.value || 'ninguno';
+  const aplicarItbis = document.getElementById('checkAplicarItbis')?.checked || false;
   let imp = 0;
 
-  if (tipoC === 'fiscal') { 
+  if (aplicarItbis) { 
     imp = subtotal * 0.18; 
     txt += `Subtotal: RD$${subtotal.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}\nITBIS (18%): RD$${imp.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}\n`; 
-  } else if (tipoC === 'gubernamental') { 
-    imp = subtotal * 0.10; 
-    txt += `Subtotal: RD$${subtotal.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}\nISR (10%): RD$${imp.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}\n`; 
   }
 
   txt += `\nTOTAL: RD$${(subtotal + imp).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
@@ -1029,8 +1033,9 @@ function inicializarEventListeners() {
     });
   }
 
-  const tipoComp = document.getElementById('tipoComprobante');
-  if (tipoComp) tipoComp.addEventListener('change', actualizarCotizacion);
+  // MODIFICADO: Escuchar el nuevo checkbox de ITBIS en lugar del dropdown
+  const checkItbis = document.getElementById('checkAplicarItbis');
+  if (checkItbis) checkItbis.addEventListener('change', actualizarCotizacion);
 
   const btnLimp = document.getElementById('btnLimpiarCotizacion');
   if (btnLimp) btnLimp.addEventListener('click', limpiarCotizacion);
@@ -1078,6 +1083,10 @@ function inicializarEventListeners() {
       if (e.key === 'Escape' && !document.getElementById('modalCotizacionesGuardadas')?.classList.contains('hidden')) {
           cerrarModalCotizaciones();
       }
+      if (e.key === 'Escape' && !document.getElementById('modalConfiguracionNCF')?.classList.contains('hidden')) {
+          document.getElementById('modalConfiguracionNCF').classList.add('hidden');
+          document.body.style.overflow = 'auto';
+      }
   });
 
   // Cerrar modal al hacer click fuera del contenido
@@ -1085,6 +1094,16 @@ function inicializarEventListeners() {
   if (modal) {
     modal.addEventListener('click', (e) => {
       if (e.target === modal) cerrarModalCotizaciones();
+    });
+  }
+  
+  const modalNCF = document.getElementById('modalConfiguracionNCF');
+  if (modalNCF) {
+    modalNCF.addEventListener('click', (e) => {
+      if (e.target === modalNCF) {
+          modalNCF.classList.add('hidden');
+          document.body.style.overflow = 'auto';
+      }
     });
   }
 
@@ -1099,13 +1118,15 @@ function inicializarEventListeners() {
   if (btnCancelarFactura) btnCancelarFactura.addEventListener('click', () => {
     document.getElementById('modalFacturacion').classList.add('hidden');
   });
+  
+  document.getElementById('btnCerrarFacturaX')?.addEventListener('click', () => document.getElementById('modalFacturacion').classList.add('hidden'));
 
   // Actualizar preview de secuencia al cambiar tipo
-  const selectNCF = document.getElementById('selectTipoNCF');
+  const selectNCF = document.getElementById('facturaTipoNCF');
   if (selectNCF) selectNCF.addEventListener('change', actualizarPreviewNCF);
   
   // Evento de búsqueda en tiempo real
-  const inputRNC = document.getElementById('inputRNCFactura');
+  const inputRNC = document.getElementById('facturaClienteRNC');
   if (inputRNC) {
     inputRNC.addEventListener('input', manejarBusquedaCliente);
   }
@@ -1133,10 +1154,7 @@ function inicializarEventListeners() {
   if (btnReporteDiario) btnReporteDiario.addEventListener('click', generarReporteDiario);
 
   const btnIT1Excel = document.getElementById('btnReporteIT1Excel');
-  if (btnIT1Excel) btnIT1Excel.addEventListener('click', () => generarReporteIT1('excel'));
-
-  const btnIT1PDF = document.getElementById('btnReporteIT1PDF');
-  if (btnIT1PDF) btnIT1PDF.addEventListener('click', () => generarReporteIT1('pdf'));
+  if (btnIT1Excel) btnIT1Excel.addEventListener('click', generarReporteIT1);
 
   // --- EVENTOS MODAL ANULACIÓN SEGURA ---
   const btnEjecutarAnulacion = document.getElementById('btnEjecutarAnulacion');
@@ -1181,6 +1199,29 @@ function inicializarEventListeners() {
     document.getElementById('modalConfirmarEliminar').classList.add('hidden');
     idCotizacionAEliminar = null;
   });
+
+  // --- EVENTOS MODAL NCF ---
+  const btnConfigNCF = document.getElementById('btnConfigurarNCF');
+  if (btnConfigNCF) btnConfigNCF.addEventListener('click', abrirModalNCF);
+
+  const btnCerrarNCF = document.getElementById('btnCerrarModalNCF');
+  if (btnCerrarNCF) btnCerrarNCF.addEventListener('click', () => {
+      document.getElementById('modalConfiguracionNCF').classList.add('hidden');
+      document.body.style.overflow = 'auto';
+  });
+
+  const formNCF = document.getElementById('formNCF');
+  if (formNCF) formNCF.addEventListener('submit', guardarConfiguracionNCF);
+
+  // Actualizar prefijos visuales en el modal de configuración NCF
+  const ncfTipoConfig = document.getElementById('ncfTipoConfig');
+  if (ncfTipoConfig) {
+      ncfTipoConfig.addEventListener('change', (e) => {
+          const val = e.target.value;
+          document.getElementById('prefixInicio').textContent = val;
+          document.getElementById('prefixFin').textContent = val;
+      });
+  }
 }
 
 // ============================================
@@ -1450,191 +1491,99 @@ function inicializarPrecioTiempoReal() {
 // 🖨️ IMPRIMIR COTIZACIÓN (vista para imprimir)
 // ============================================
 
-function imprimirCotizacion() {
+async function imprimirCotizacion(e) {
+  if (e && e.preventDefault) e.preventDefault();
+
   if (cotizacion.length === 0) { mostrarNotificacion('Cotización vacía', 'warning'); return; }
 
-  const originalTable = document.getElementById('cotizacionTabla');
-  if (!originalTable) { mostrarNotificacion('No se encontró la tabla', 'error'); return; }
-
-  const tableClone = originalTable.cloneNode(true);
-  tableClone.querySelectorAll('tr').forEach(row => {
-    row.querySelectorAll('button, input, select').forEach(n => n.remove());
-    const cells = row.querySelectorAll('th, td');
-    if (cells.length > 0) cells[cells.length - 1].remove();
-  });
-
-  const fecha = new Date().toLocaleString();
-  const tipoComp = document.getElementById('tipoComprobante')?.value || 'ninguno';
-  const subtotal = cotizacion.reduce((s, i) => s + i.precio, 0);
-  
-  let impuesto = 0;
-  let nombreImpuesto = '';
-  if (tipoComp === 'fiscal') { 
-    impuesto = subtotal * 0.18; 
-    nombreImpuesto = 'ITBIS (18%)'; 
-  } else if (tipoComp === 'gubernamental') { 
-    impuesto = subtotal * 0.10; 
-    nombreImpuesto = 'ISR (10%)'; 
+  // UX: Deshabilitar botón para evitar doble clic
+  const btn = document.getElementById('generarPDF');
+  const originalText = btn ? btn.innerHTML : '';
+  if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Generando...';
   }
 
-  const total = subtotal + impuesto;
+  mostrarNotificacion('📄 Generando PDF profesional...', 'info');
 
-  // Preparamos los textos para asegurar compatibilidad
-  const descripcionTexto = cotizacion.map(i => `${i.cantidad || 1}x ${i.nombre} ${i.descripcion ? '(' + i.descripcion + ')' : ''}`).join('\n');
+  // 1. Preparar datos para el backend
+  const aplicarItbis = document.getElementById('checkAplicarItbis')?.checked || false;
+  const fecha = new Date().toLocaleDateString('es-DO');
+  const subtotal = cotizacion.reduce((s, i) => s + i.precio, 0);
   
-  // Guardar reporte de venta en Firebase
-  registrarLogVenta({
-    tipo: 'General',
-    total: total.toFixed(2),
-    detalle: descripcionTexto
-  });
+  let impuestos = [];
+  let totalImpuesto = 0;
 
-  const resumenHTML = tipoComp !== 'ninguno' ? `
-    <tr style="background-color: #f0f9ff;">
-      <td colspan="4" style="text-align: right; font-weight: bold; color: #475569; padding: 12px 16px;">Subtotal:</td>
-      <td style="text-align: right; font-weight: bold; color: #2563eb; padding: 12px 16px; font-size: 16px;">RD$${subtotal.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</td>
-    </tr>
-    <tr>
-      <td colspan="4" style="text-align: right; font-weight: bold; color: #475569; padding: 12px 16px;">Impuesto (${nombreImpuesto}):</td>
-      <td style="text-align: right; font-weight: bold; color: #ea580c; padding: 12px 16px; font-size: 16px;">RD$${impuesto.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</td>
-    </tr>
-    <tr style="background: linear-gradient(to right, #2563eb, #1e40af);">
-      <td colspan="4" style="text-align: right; font-weight: bold; color: white; padding: 16px; font-size: 14px;">TOTAL A PAGAR:</td>
-      <td style="text-align: right; font-weight: 900; color: white; padding: 16px; font-size: 18px; background: linear-gradient(to right, #ea580c, #c2410c);">RD$${total.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</td>
-    </tr>
-  ` : `
-    <tr style="background: linear-gradient(to right, #2563eb, #1e40af);">
-      <td colspan="4" style="text-align: right; font-weight: bold; color: white; padding: 16px; font-size: 14px;">TOTAL:</td>
-      <td style="text-align: right; font-weight: 900; color: white; padding: 16px; font-size: 18px; background: linear-gradient(to right, #ea580c, #c2410c);">RD$${total.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</td>
-    </tr>
-  `;
+  if (aplicarItbis) {
+    const itbis = subtotal * 0.18;
+    impuestos.push({ nombre: 'ITBIS (18%)', monto: itbis });
+    totalImpuesto += itbis;
+  }
 
-  const html = `
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Cotización - ServiGaco</title>
-      <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: white; }
-        .container { max-width: 900px; margin: 0 auto; background: white; overflow: hidden; }
-        .header { background: linear-gradient(135deg, #2563eb 0%, #1e40af 50%, #1e3a8a 100%); color: white; padding: 40px 30px; position: relative; overflow: hidden; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        .header::before { content: ''; position: absolute; top: -50%; right: -50%; width: 400px; height: 400px; background: rgba(234, 88, 12, 0.15); border-radius: 50%; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        .header::after { content: ''; position: absolute; bottom: -30%; left: -30%; width: 300px; height: 300px; background: rgba(234, 88, 12, 0.1); border-radius: 50%; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        .header-content { position: relative; z-index: 1; text-align: center; }
-        .logo { width: 140px; height: auto; margin: 0 auto 15px; display: block; }
-        .header h1 { font-size: 28px; font-weight: 900; margin-bottom: 5px; letter-spacing: -0.5px; }
-        .header-divider { width: 50px; height: 4px; background: linear-gradient(to right, #f97316, #ea580c); margin: 10px auto 15px; border-radius: 10px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        .header p { font-size: 12px; color: #bfdbfe; font-weight: 600; letter-spacing: 1px; margin-bottom: 15px; }
-        .header-badge { display: inline-block; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; padding: 12px 20px; font-size: 12px; font-weight: 600; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        .content { padding: 30px; }
-        table { width: 100%; border-collapse: collapse; }
-        thead tr { background: linear-gradient(to right, #2563eb, #1e40af); color: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        thead th { padding: 14px 16px; text-align: left; font-weight: 700; font-size: 12px; letter-spacing: 0.5px; text-transform: uppercase; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        tbody tr { border-bottom: 1px solid #e0e7ff; }
-        tbody tr:nth-child(odd) { background: #f0f9ff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        tbody tr:nth-child(even) { background: white; }
-        tbody td { padding: 14px 16px; font-size: 13px; }
-        tbody td:first-child { font-weight: 700; color: #1e3a8a; }
-        tbody td:nth-child(3) { text-align: center; font-weight: 600; }
-        tbody td:nth-child(4), tbody td:nth-child(5) { text-align: right; }
-        tbody td:nth-child(4) { color: #2563eb; font-weight: 600; }
-        tbody td:nth-child(5) { color: #ea580c; font-weight: 700; }
-        .footer { background: linear-gradient(to right, #1f2937, #111827); border-top: 4px solid #ea580c; padding: 25px 30px; text-align: center; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        .footer-brand { color: #f97316; font-weight: 900; font-size: 16px; letter-spacing: 1px; margin-bottom: 5px; }
-        .footer-subtitle { color: #cbd5e1; font-size: 11px; font-weight: 600; margin-bottom: 12px; }
-        .footer-text { color: #94a3b8; font-size: 11px; line-height: 1.6; border-top: 1px solid #374151; padding-top: 12px; margin-top: 12px; }
-        @page { size: 8.5in 11in; margin: 0.3in; }
-        @media print {
-          html, body { width: 8.5in; height: 11in; margin: 0; padding: 0; overflow: hidden; }
-          body { background: white; }
-          .container { box-shadow: none; border-radius: 0; max-height: 100%; overflow: hidden; }
-          * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          .header { padding: 25px 20px; }
-          .header h1 { font-size: 24px; }
-          .header p { font-size: 10px; }
-          .content { padding: 15px; }
-          table { font-size: 11px; }
-          thead th { padding: 10px 12px; font-size: 10px; }
-          tbody td { padding: 8px 12px; font-size: 10px; }
-          .footer { padding: 15px 20px; font-size: 9px; }
-          .footer-brand { font-size: 13px; }
-          .footer-subtitle { font-size: 9px; }
-          .footer-text { font-size: 9px; }
-          .logo { width: 100px; }
+  const total = subtotal + totalImpuesto;
+
+  const datosFactura = {
+    id: idCotizacionActiva, // Enviar ID si es una cotización guardada
+    ncf: 'COTIZACIÓN',
+    fecha: fecha,
+    tituloDocumento: 'COTIZACIÓN DE SERVICIOS',
+    cliente: {
+      nombre: nombreCotizacionActiva || 'Cliente General',
+      rnc: '',
+      telefono: ''
+    },
+    items: cotizacion,
+    subtotal: subtotal,
+    impuestos: impuestos,
+    total: total,
+    condicion: 'Contado'
+  };
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/generar-factura-pdf`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(datosFactura)
+    });
+
+    if (!response.ok) {
+        if (response.status === 404) {
+            throw new Error("⚠️ Ruta no encontrada (404). Por favor, REINICIA el servidor backend.");
         }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <!-- HEADER -->
-        <div class="header">
-          <div class="header-content">
-            <img src="assets/logo.png" alt="Servigaco Logo" class="logo" />
-            <div class="header-divider"></div>
-            <p>COTIZACIÓN DE SERVICIOS PROFESIONALES</p>
-            <div class="header-badge">
-              📅 ${fecha} | ✓ Presupuesto Válido
-            </div>
-          </div>
-        </div>
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Error generando PDF');
+    }
 
-        <!-- CONTENIDO -->
-        <div class="content">
-          <table>
-            <thead>
-              <tr>
-                <th>Servicio</th>
-                <th>Descripción</th>
-                <th style="width: 80px; text-align: center;">Cantidad</th>
-                <th style="width: 110px; text-align: right;">Precio Unit.</th>
-                <th style="width: 110px; text-align: right;">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${Array.from(tableClone.querySelectorAll('tbody tr')).map((row, idx) => {
-                const cells = row.querySelectorAll('td');
-                if (cells.length >= 5) {
-                  return '<tr>' +
-                    '<td>' + cells[0].textContent.trim() + '</td>' +
-                    '<td>' + cells[1].textContent.trim() + '</td>' +
-                    '<td style="text-align: center;">' + cells[2].textContent.trim() + '</td>' +
-                    '<td style="text-align: right;">' + cells[3].textContent.trim() + '</td>' +
-                    '<td style="text-align: right;">' + cells[4].textContent.trim() + '</td>' +
-                  '</tr>';
-                }
-                return '';
-              }).join('')}
-            </tbody>
-            <tfoot>
-              ${resumenHTML}
-            </tfoot>
-          </table>
-        </div>
+    const blob = await response.blob();
+    
+    if (blob.size < 100) {
+        console.warn("⚠️ ALERTA: El archivo recibido es muy pequeño (" + blob.size + " bytes). Podría estar dañado o ser un mensaje de error.");
+    }
 
-        <!-- FOOTER -->
-        <div class="footer">
-          <div class="footer-brand">ServiGaco®</div>
-          <div class="footer-subtitle">SERVICIOS DE IMPRESIÓN PROFESIONALES</div>
-          <div class="footer-text">
-            Cotización generada automáticamente. Válida por 30 días.<br>
-            Para confirmar el pedido, contacta con nuestro equipo de ventas.
-          </div>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Cotizacion_${nombreCotizacionActiva || 'General'}_${new Date().getTime()}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    a.remove();
+    
+    mostrarNotificacion('✅ PDF descargado correctamente', 'success');
 
-  const ventana = window.open('', 'cotizacion', 'width=1200,height=800');
-  ventana.document.write(html);
-  ventana.document.close();
-
-  setTimeout(() => {
-    ventana.print();
-  }, 500);
+  } catch (error) {
+    console.error(error);
+    if (error.message && error.message.includes('Failed to fetch')) {
+      mostrarNotificacion('❌ Error de conexión: El servidor backend no está encendido (Puerto 3000).', 'error');
+    } else {
+      mostrarNotificacion('Error al generar PDF: ' + error.message, 'error');
+    }
+  } finally {
+    if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+  }
 }
 
 // ============================================
@@ -1686,10 +1635,9 @@ async function guardarCotizacionActual() { // ESTA FUNCIÓN AHORA SOLO CREA NUEV
 
   // 3. Calcular Totales
   const subtotal = cotizacion.reduce((sum, item) => sum + item.precio, 0);
-  const tipoComp = document.getElementById('tipoComprobante')?.value || 'ninguno';
+  const aplicarItbis = document.getElementById('checkAplicarItbis')?.checked || false;
   let impuesto = 0;
-  if (tipoComp === 'fiscal') impuesto = subtotal * 0.18;
-  else if (tipoComp === 'gubernamental') impuesto = subtotal * 0.10;
+  if (aplicarItbis) impuesto = subtotal * 0.18;
   const total = subtotal + impuesto;
 
   // 4. Generar Descripción Detallada (SOLUCIÓN "NO LOS DETALLES")
@@ -1708,7 +1656,7 @@ async function guardarCotizacionActual() { // ESTA FUNCIÓN AHORA SOLO CREA NUEV
     items: cotizacion
   };
 
-  console.log("🚀 Enviando General a Firebase:", paqueteDeDatos);
+  console.log("💾 [BORRADOR] Guardando cotización en Firebase (Esto NO consume NCF):", paqueteDeDatos);
 
   // 6. Enviar
   try {
@@ -1733,10 +1681,9 @@ async function guardarCambiosCotizacion() { // NUEVA FUNCIÓN SOLO PARA EDITAR
 
   const nombre = nombreCotizacionActiva || "Cliente General";
   const subtotal = cotizacion.reduce((sum, item) => sum + item.precio, 0);
-  const tipoComp = document.getElementById('tipoComprobante')?.value || 'ninguno';
+  const aplicarItbis = document.getElementById('checkAplicarItbis')?.checked || false;
   let impuesto = 0;
-  if (tipoComp === 'fiscal') impuesto = subtotal * 0.18;
-  else if (tipoComp === 'gubernamental') impuesto = subtotal * 0.10;
+  if (aplicarItbis) impuesto = subtotal * 0.18;
   const total = subtotal + impuesto;
 
   const detallesTexto = cotizacion.map(item => `${item.cantidad}x ${item.nombre}`).join(', ');
@@ -1759,6 +1706,38 @@ async function guardarCambiosCotizacion() { // NUEVA FUNCIÓN SOLO PARA EDITAR
     console.error("❌ Error actualizando:", error);
     mostrarNotificacion("Error al actualizar: " + error.message, "error");
   }
+}
+
+/**
+ * Clona una cotización facturada para permitir su corrección y la generación de una nueva factura.
+ * NO modifica la cotización original.
+ * @param {string} id - El ID de la cotización a clonar.
+ */
+function corregirFacturaDesdeCotizacion(id) {
+  const cotizacionOriginal = todasLasCotizaciones.find(c => c.id === id);
+  
+  if (!cotizacionOriginal) {
+    mostrarNotificacion('Error: No se pudo encontrar la cotización para corregir.', 'error');
+    return;
+  }
+
+  // 1. Clonar los items para evitar modificar el objeto original
+  // Usamos JSON.parse(JSON.stringify(...)) para una copia profunda y segura
+  cotizacion = JSON.parse(JSON.stringify(cotizacionOriginal.items ? Object.values(cotizacionOriginal.items) : []));
+  
+  // 2. Resetear el estado de edición: estamos creando una NUEVA cotización
+  idCotizacionActiva = null;
+  
+  // 3. Mantener el nombre del cliente
+  nombreCotizacionActiva = cotizacionOriginal.nombre || "Cliente General";
+  
+  // 4. Actualizar la UI con los datos clonados y cerrar el modal
+  actualizarCotizacion();
+  cerrarModalCotizaciones();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  // 5. Mostrar una notificación clara sobre el próximo paso
+  mostrarNotificacion('Cotización clonada. No olvides anular la factura original si es incorrecta.', 'warning');
 }
 
 function cargarCotizacionGuardada(id) {
@@ -1836,8 +1815,14 @@ function renderizarCotizacionesGuardadas() {
     
     // Botón de facturar
     const btnFacturar = (!c.ncf) 
-      ? `<button onclick="abrirModalFacturacion('${c.id}')" class="flex-1 md:flex-none min-w-[100px] py-2 px-3 rounded-lg font-semibold text-sm text-white bg-green-600 hover:bg-green-700 transition-all shadow-sm whitespace-nowrap">🧾 Facturar</button>`
+      ? `<button type="button" onclick="abrirModalFacturacion('${c.id}')" class="flex-1 md:flex-none min-w-[100px] py-2 px-3 rounded-lg font-semibold text-sm text-white bg-green-600 hover:bg-green-700 transition-all shadow-sm whitespace-nowrap">🧾 Facturar</button>`
       : (c.ncf ? `<span class="text-xs font-bold text-green-600 dark:text-green-400 border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/30 px-2 py-1 rounded whitespace-nowrap">✅ ${c.ncf}</span>` : '');
+
+    const esFacturada = c.estado === 'facturada' || c.ncf;
+
+    const btnEditarOCorregir = esFacturada
+      ? `<button type="button" onclick="corregirFacturaDesdeCotizacion('${c.id}')" class="flex-1 md:flex-none min-w-[90px] py-2 px-3 rounded-lg font-semibold text-sm text-white bg-yellow-600 hover:bg-yellow-700 transition-all shadow-sm whitespace-nowrap" title="Clona esta cotización para corregir y generar una nueva factura.">🔁 Corregir</button>`
+      : `<button type="button" onclick="cargarCotizacionGuardada('${c.id}')" class="flex-1 md:flex-none min-w-[90px] py-2 px-3 rounded-lg font-semibold text-sm text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-sm whitespace-nowrap">📝 Editar</button>`;
 
     return `
       <div class="p-4 mb-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 hover:bg-blue-50 dark:hover:bg-gray-700/60 transition-colors">
@@ -1848,8 +1833,8 @@ function renderizarCotizacionesGuardadas() {
         </div>
         <div class="flex flex-wrap gap-2 w-full md:w-auto justify-end mt-2 md:mt-0">
           ${btnFacturar}
-          <button onclick="cargarCotizacionGuardada('${c.id}')" class="flex-1 md:flex-none min-w-[90px] py-2 px-3 rounded-lg font-semibold text-sm text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-sm whitespace-nowrap">📝 Editar</button>
-          <button onclick="eliminarCotizacionGuardada('${c.id}')" class="flex-1 md:flex-none min-w-[90px] py-2 px-3 rounded-lg font-semibold text-sm text-white bg-red-600 hover:bg-red-700 transition-all shadow-sm whitespace-nowrap">🗑️ Borrar</button>
+          ${btnEditarOCorregir}
+          <button type="button" onclick="eliminarCotizacionGuardada('${c.id}')" class="flex-1 md:flex-none min-w-[90px] py-2 px-3 rounded-lg font-semibold text-sm text-white bg-red-600 hover:bg-red-700 transition-all shadow-sm whitespace-nowrap">🗑️ Borrar</button>
         </div>
       </div>
     `;
@@ -1990,7 +1975,7 @@ async function ejecutarBusquedaFirebase(termino) {
   try {
     // 🔄 MIGRACIÓN A BACKEND: Usamos fetch en lugar de db.ref directo
     // Esto protege la base de datos y reduce el tráfico en el cliente
-    const response = await fetch(`/api/rnc/${encodeURIComponent(termino)}`);
+    const response = await fetch(`${API_BASE_URL}/api/rnc/${encodeURIComponent(termino)}`);
     
     if (!response.ok) throw new Error('Error en el servidor');
     
@@ -2042,8 +2027,8 @@ function renderizarResultadosBusqueda(resultados, termino, esOffline) {
 
 // Función global para el onclick del HTML generado
 window.seleccionarClienteBusqueda = function(rnc, nombre) {
-  document.getElementById('inputRNCFactura').value = rnc;
-  document.getElementById('inputNombreFactura').value = nombre;
+  document.getElementById('facturaClienteRNC').value = rnc;
+  document.getElementById('facturaClienteNombre').value = nombre;
   document.getElementById('listaResultadosClientes').classList.add('hidden');
   
   // Validar RNC visualmente
@@ -2052,16 +2037,34 @@ window.seleccionarClienteBusqueda = function(rnc, nombre) {
   infoLabel.classList.remove('hidden');
   
   // Auto-seleccionar tipo NCF
-  const selectNCF = document.getElementById('selectTipoNCF');
-  if (rnc.length === 9) selectNCF.value = 'B01';
-  else selectNCF.value = 'B02';
+  const selectNCF = document.getElementById('facturaTipoNCF');
+  const rncLimpio = rnc.replace(/-/g, '');
+
+  if (rncLimpio.length === 11) {
+    // Persona Física (Cédula) -> Consumidor Final
+    selectNCF.value = 'B02';
+  } else if (rncLimpio.length === 9) {
+    if (rncLimpio.startsWith('4')) {
+      // Entidad Gubernamental
+      selectNCF.value = 'B15';
+    } else {
+      // Empresa -> Crédito Fiscal
+      selectNCF.value = 'B01';
+    }
+  } else {
+    // Default o caso no reconocido, asumimos consumidor final
+    selectNCF.value = 'B02';
+  }
+
+  // Actualizar el preview del NCF que se va a generar
+  actualizarPreviewNCF();
 };
 
 async function buscarClientePorRNC() {
-  const rncInput = document.getElementById('inputRNCFactura');
-  const nombreInput = document.getElementById('inputNombreFactura');
+  const rncInput = document.getElementById('facturaClienteRNC');
+  const nombreInput = document.getElementById('facturaClienteNombre');
   const infoLabel = document.getElementById('infoClienteRNC');
-  const selectNCF = document.getElementById('selectTipoNCF');
+  const selectNCF = document.getElementById('facturaTipoNCF');
   
   const rnc = rncInput.value.replace(/-/g, '').trim();
 
@@ -2071,11 +2074,25 @@ async function buscarClientePorRNC() {
     return;
   }
 
+  // --- LÓGICA DE AUTO-SELECCIÓN DE NCF ---
+  if (rnc.length === 11) {
+    selectNCF.value = 'B02'; // Persona
+  } else if (rnc.length === 9) {
+    if (rnc.startsWith('4')) {
+      selectNCF.value = 'B15'; // Gobierno
+    } else {
+      selectNCF.value = 'B01'; // Empresa
+    }
+  }
+  // Actualizar preview inmediatamente
+  actualizarPreviewNCF();
+  // ------------------------------------
+
   mostrarNotificacion('Buscando en base de datos...', 'info');
 
   try {
     // 🔄 MIGRACIÓN A BACKEND: Consulta directa por API
-    const response = await fetch(`/api/rnc/${rnc}`);
+    const response = await fetch(`${API_BASE_URL}/api/rnc/${rnc}`);
     const resultados = await response.json();
     const datos = resultados ? resultados[rnc] : null;
 
@@ -2084,12 +2101,7 @@ async function buscarClientePorRNC() {
       infoLabel.textContent = '✅ Cliente encontrado en DGII';
       infoLabel.classList.remove('hidden');
       
-      // Sugerir NCF
-      if (rnc.length === 9) {
-        selectNCF.value = 'B01'; // Empresa -> Crédito Fiscal
-      } else {
-        selectNCF.value = 'B02'; // Persona -> Consumo Final
-      }
+      // La sugerencia de NCF ya se hizo arriba, no es necesario repetirla.
     } else {
       mostrarNotificacion('RNC válido pero no registrado en local. Ingrese nombre manual.', 'warning');
       // MODIFICADO: Botón para guardar cliente nuevo
@@ -2109,8 +2121,8 @@ async function buscarClientePorRNC() {
 }
 
 async function guardarNuevoCliente() {
-  const rncInput = document.getElementById('inputRNCFactura');
-  const nombreInput = document.getElementById('inputNombreFactura');
+  const rncInput = document.getElementById('facturaClienteRNC');
+  const nombreInput = document.getElementById('facturaClienteNombre');
   const infoLabel = document.getElementById('infoClienteRNC');
 
   const rnc = rncInput.value.replace(/-/g, '').trim();
@@ -2147,7 +2159,7 @@ async function guardarNuevoCliente() {
     infoLabel.innerHTML = '<span class="text-green-600 font-bold">✅ Cliente registrado exitosamente</span>';
     
     // Auto-seleccionar tipo NCF si no estaba seleccionado
-    const selectNCF = document.getElementById('selectTipoNCF');
+    const selectNCF = document.getElementById('facturaTipoNCF');
     if (selectNCF && !selectNCF.value) {
         if (rnc.length === 9) selectNCF.value = 'B01';
         else selectNCF.value = 'B02';
@@ -2168,22 +2180,62 @@ async function guardarNuevoCliente() {
 // ============================================
 
 async function actualizarPreviewNCF() {
-  const tipo = document.getElementById('selectTipoNCF').value;
+  const tipo = document.getElementById('facturaTipoNCF').value;
   const label = document.getElementById('previewProximoNCF');
+  const btnConfirmar = document.getElementById('btnConfirmarFactura');
+
   if (!label) return;
 
   label.textContent = '🔄 Verificando secuencia...';
   label.className = 'text-xs font-bold mt-2 text-right text-gray-500';
   
+  // Bloquear botón mientras verifica
+  if (btnConfirmar) {
+      btnConfirmar.disabled = true;
+      btnConfirmar.classList.add('opacity-50', 'cursor-not-allowed');
+  }
+
   try {
-    // Consultar solo el contador actual para ser rápidos
-    const snap = await db.ref(`secuencias_ncf/${tipo}/actual`).once('value');
-    const actual = snap.val() || 0;
-    const siguiente = actual + 1;
+    // Consultar configuración completa para validar límites y alertas
+    const snap = await db.ref(`secuencias_ncf/${tipo}`).once('value');
+    const data = snap.val();
+
+    if (!data) {
+        label.textContent = '⚠️ TIPO NO CONFIGURADO';
+        label.className = 'text-xs font-bold mt-2 text-right text-red-500 animate-pulse';
+        return; // Se queda deshabilitado
+    }
+
+    const actual = parseInt(data.actual || 0, 10);
+    const desde = parseInt(data.desde || 1, 10);
+    const hasta = parseInt(data.hasta || 0, 10);
+
+    // Ajuste para respetar el rango 'desde' si actual es menor
+    const effectiveActual = (actual < desde - 1) ? (desde - 1) : actual;
+    const disponibles = hasta - effectiveActual;
+    const siguiente = effectiveActual + 1;
+
     const ncfPreview = tipo + String(siguiente).padStart(8, '0');
     
-    label.textContent = `Próximo NCF a emitir: ${ncfPreview}`;
-    label.className = 'text-xs font-bold mt-2 text-right text-blue-600';
+    if (disponibles <= 0) {
+        label.textContent = `⛔ AGOTADO (Límite: ${hasta})`;
+        label.className = 'text-xs font-bold mt-2 text-right text-red-600 font-black';
+        // Se queda deshabilitado
+    } else {
+        if (disponibles <= 10) {
+            label.textContent = `⚠️ Quedan ${disponibles} - Próximo: ${ncfPreview}`;
+            label.className = 'text-xs font-bold mt-2 text-right text-orange-600 animate-pulse';
+        } else {
+            label.textContent = `Próximo: ${ncfPreview} • Disponibles: ${disponibles}`;
+            label.className = 'text-xs font-bold mt-2 text-right text-blue-600';
+        }
+        
+        // Habilitar botón si hay disponibles
+        if (btnConfirmar) {
+            btnConfirmar.disabled = false;
+            btnConfirmar.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+    }
     
   } catch (e) {
     console.error(e);
@@ -2196,21 +2248,137 @@ function abrirModalFacturacion(idCotizacion) {
   // 🛡️ VERIFICACIÓN DE SEGURIDAD
   if (!verificarPermisoAdmin()) return;
 
-  cotizacionAFacturar = todasLasCotizaciones.find(c => c.id === idCotizacion);
+  // Clonar cotización para no modificar la original hasta guardar
+  const cotOriginal = todasLasCotizaciones.find(c => c.id === idCotizacion);
+  if (!cotOriginal) return;
   
-  if (!cotizacionAFacturar) return;
+  cotizacionAFacturar = JSON.parse(JSON.stringify(cotOriginal));
 
   // Pre-llenar datos
-  document.getElementById('montoTotalFactura').textContent = `RD$${cotizacionAFacturar.total}`;
-  document.getElementById('inputNombreFactura').value = cotizacionAFacturar.nombre;
-  document.getElementById('inputRNCFactura').value = '';
+  document.getElementById('facturaClienteNombre').value = cotizacionAFacturar.nombre;
+  document.getElementById('facturaClienteRNC').value = '';
+  document.getElementById('facturaFecha').valueAsDate = new Date();
+  document.getElementById('facturaAbono').value = ''; // Limpiar abono
+  
   document.getElementById('infoClienteRNC').classList.add('hidden');
   document.getElementById('listaResultadosClientes').classList.add('hidden'); // Ocultar lista si estaba abierta
+  
+  // Renderizar items en la tabla del modal
+  renderizarItemsFacturaModal();
   
   // Mostrar modal
   document.getElementById('modalFacturacion').classList.remove('hidden');
   cerrarModalCotizaciones(); // Cerrar el de lista
   actualizarPreviewNCF(); // Cargar secuencia inicial
+  
+  // Listeners internos del modal
+  document.getElementById('facturaTipoNCF').addEventListener('change', () => {
+      actualizarPreviewNCF();
+      recalcularTotalesFacturaModal();
+  });
+  
+  document.querySelectorAll('input[name="facturaCondicionVenta"]').forEach(r => {
+      r.addEventListener('change', (e) => {
+          const div = document.getElementById('divFacturaVencimiento');
+          const val = e.target.value;
+          if(val.startsWith('credito')) {
+              div.classList.remove('hidden');
+              const dias = val === 'credito_15' ? 15 : 30;
+              const d = new Date();
+              d.setDate(d.getDate() + dias);
+              document.getElementById('facturaVencimiento').valueAsDate = d;
+          } else {
+              div.classList.add('hidden');
+          }
+      });
+  });
+
+  document.getElementById('facturaMetodoPago').addEventListener('change', (e) => {
+      const ref = document.getElementById('facturaReferencia');
+      if(e.target.value !== 'efectivo') ref.classList.remove('hidden');
+      else ref.classList.add('hidden');
+  });
+}
+
+// --- FUNCIONES PARA LA TABLA DEL MODAL ---
+
+function renderizarItemsFacturaModal() {
+    const tbody = document.getElementById('facturaTablaProductos');
+    tbody.innerHTML = '';
+    
+    if (!cotizacionAFacturar.items || cotizacionAFacturar.items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center p-4 text-gray-400">Sin items</td></tr>';
+        return;
+    }
+
+    cotizacionAFacturar.items.forEach((item, index) => {
+        const row = document.createElement('tr');
+        row.className = "hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors";
+        
+        const precio = parseFloat(item.precioUnitario || item.precio || 0);
+        const total = parseFloat(item.precio || 0);
+        const tieneItbis = true; // Por defecto asumimos que todo grava, el select NCF ajustará el total final
+
+        row.innerHTML = `
+            <td class="p-2"><input type="number" class="w-full text-center bg-transparent border border-gray-200 rounded p-1" value="${item.cantidad}" onchange="actualizarItemFactura(${index}, 'cantidad', this.value)"></td>
+            <td class="p-2"><input type="text" class="w-full bg-transparent border border-gray-200 rounded p-1" value="${item.nombre} ${item.descripcion || ''}" onchange="actualizarItemFactura(${index}, 'descripcion', this.value)"></td>
+            <td class="p-2"><input type="number" class="w-full text-right bg-transparent border border-gray-200 rounded p-1" value="${precio.toFixed(2)}" onchange="actualizarItemFactura(${index}, 'precio', this.value)"></td>
+            <td class="p-2 text-center"><input type="checkbox" checked disabled class="opacity-50 cursor-not-allowed"></td>
+            <td class="p-2 text-right font-bold text-gray-700 dark:text-gray-300">RD$ ${total.toFixed(2)}</td>
+            <td class="p-2 text-center"><button onclick="eliminarItemFactura(${index})" class="text-red-500 hover:bg-red-100 rounded p-1">✕</button></td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    recalcularTotalesFacturaModal();
+}
+
+window.actualizarItemFactura = function(index, campo, valor) {
+    const item = cotizacionAFacturar.items[index];
+    if (campo === 'cantidad') item.cantidad = parseFloat(valor);
+    if (campo === 'precio') item.precioUnitario = parseFloat(valor);
+    if (campo === 'descripcion') item.descripcion = valor; // Ajuste simple
+    
+    // Recalcular total linea
+    item.precio = item.cantidad * item.precioUnitario;
+    renderizarItemsFacturaModal();
+}
+
+window.eliminarItemFactura = function(index) {
+    cotizacionAFacturar.items.splice(index, 1);
+    renderizarItemsFacturaModal();
+}
+
+window.facturaAgregarItemVacio = function() {
+    cotizacionAFacturar.items.push({
+        cantidad: 1,
+        nombre: "Nuevo Item",
+        precioUnitario: 0,
+        precio: 0
+    });
+    renderizarItemsFacturaModal();
+}
+
+function recalcularTotalesFacturaModal() {
+    let subtotal = 0;
+    cotizacionAFacturar.items.forEach(i => subtotal += i.precio);
+    
+    const tipoNCF = document.getElementById('facturaTipoNCF').value;
+    let itbis = 0;
+    
+    // Lógica simple: B01/B02 gravan 18%
+    if (tipoNCF === 'B01' || tipoNCF === 'B02') {
+        itbis = subtotal * 0.18;
+    }
+    
+    const total = subtotal + itbis;
+    
+    document.getElementById('facturaSubtotal').textContent = `RD$ ${subtotal.toFixed(2)}`;
+    document.getElementById('facturaITBIS').textContent = `RD$ ${itbis.toFixed(2)}`;
+    document.getElementById('facturaTotalGeneral').textContent = `RD$ ${total.toFixed(2)}`;
+    
+    // Actualizar objeto global para envío
+    cotizacionAFacturar.total = total;
 }
 
 function validarFormatoNCF(ncf) {
@@ -2223,9 +2391,17 @@ function validarFormatoNCF(ncf) {
 async function generarFacturaFinal() {
   if (!cotizacionAFacturar) return;
 
-  const rnc = document.getElementById('inputRNCFactura').value;
-  const nombre = document.getElementById('inputNombreFactura').value;
-  const tipoNCF = document.getElementById('selectTipoNCF').value;
+  // Validación extra de seguridad en frontend
+  const btnConfirmar = document.getElementById('btnConfirmarFactura');
+  if (btnConfirmar && btnConfirmar.disabled) {
+      mostrarNotificacion('⛔ No se puede facturar: NCF Agotado o no configurado.', 'error');
+      return;
+  }
+
+  const rnc = document.getElementById('facturaClienteRNC').value;
+  const nombre = document.getElementById('facturaClienteNombre').value;
+  const tipoNCF = document.getElementById('facturaTipoNCF').value;
+  const abono = document.getElementById('facturaAbono').value;
 
   if (!nombre) {
     mostrarNotificacion('El nombre es obligatorio', 'error');
@@ -2238,12 +2414,13 @@ async function generarFacturaFinal() {
     return;
   }
 
-  mostrarNotificacion('Generando NCF...', 'info');
+  console.log(`🧾 [FACTURACIÓN] Iniciando emisión de factura fiscal para ${tipoNCF}...`);
+  mostrarNotificacion(`Generando NCF ${tipoNCF}...`, 'info');
 
   try {
     // 🔄 MIGRACIÓN A BACKEND: Delegamos la facturación al servidor
     // Esto evita duplicidad de NCF y protege la lógica de secuencias
-    const response = await fetch('/api/facturar', {
+    const response = await fetch(`${API_BASE_URL}/api/facturar`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -2254,7 +2431,11 @@ async function generarFacturaFinal() {
           rnc: rnc,
           nombre: nombre
         },
-        tipoNCF: tipoNCF
+        condicionVenta: document.querySelector('input[name="facturaCondicionVenta"]:checked').value,
+        metodoPago: document.getElementById('facturaMetodoPago').value,
+        referenciaPago: document.getElementById('facturaReferencia').value,
+        tipoNCF: tipoNCF,
+        abono: abono // Enviar abono
       })
     });
 
@@ -2291,7 +2472,7 @@ async function abrirModalFacturas() {
   if (!modal) return;
   
   modal.classList.remove('hidden');
-  lista.innerHTML = '<div class="text-center py-10"><p class="text-xl animate-pulse">🔄 Cargando facturas...</p></div>';
+  if (lista) lista.innerHTML = '<div class="text-center py-10"><p class="text-xl animate-pulse">🔄 Cargando facturas...</p></div>';
 
   // Establecer mes actual por defecto si no tiene valor
   if (!filtro.value) {
@@ -2301,8 +2482,8 @@ async function abrirModalFacturas() {
   }
 
   try {
-    // OPTIMIZACIÓN: Cargar solo las últimas 50 facturas inicialmente
-    const snapshot = await db.ref("facturas").limitToLast(50).once("value");
+    // OPTIMIZACIÓN: Cargar solo las últimas 20 facturas para que no se frise
+    const snapshot = await db.ref("facturas").limitToLast(20).once("value");
     const data = snapshot.val();
 
     if (data) {
@@ -2408,8 +2589,9 @@ function renderizarFacturas() {
         etiquetaEstado = '<span class="text-xs text-purple-600 dark:text-purple-400 font-bold border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/30 px-2 py-1 rounded">↩️ Nota Crédito</span>';
     } else {
         etiquetaEstado = `
-          <button onclick="imprimirFactura('${f.id}')" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded border border-blue-200 transition-colors font-bold mr-2">🖨️ Imprimir</button>
-          <button onclick="anularFactura('${f.id}')" class="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1 rounded border border-red-200 transition-colors font-bold">🚫 Anular</button>
+          <button type="button" onclick="abrirModalEditarFactura('${f.id}')" class="text-xs bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded border border-yellow-600 transition-colors font-bold mr-2 shadow-sm">✏️ Editar</button>
+          <button type="button" onclick="imprimirFactura('${f.id}')" class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded border border-blue-700 transition-colors font-bold mr-2 shadow-sm">🖨️ Imprimir</button>
+          <button type="button" onclick="anularFactura('${f.id}')" class="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1 rounded border border-red-200 transition-colors font-bold">🚫 Anular</button>
         `;
     }
 
@@ -2439,119 +2621,64 @@ function renderizarFacturas() {
   totalLabel.textContent = `Total Facturado: RD$${sumaTotal.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
 }
 
-function imprimirFactura(idFactura) {
+async function imprimirFactura(idFactura) {
   const factura = todasLasFacturas.find(f => f.id === idFactura);
-  if (!factura) return;
-
-  const fecha = new Date(factura.fecha_facturacion).toLocaleDateString('es-DO');
-  // Asegurar que items sea un array (Firebase a veces devuelve objetos si las claves son numéricas)
-  const items = Array.isArray(factura.items) ? factura.items : (factura.items ? Object.values(factura.items) : []);
-  
-  const subtotal = items.reduce((s, i) => s + (i.precio || 0), 0);
-  
-  // Recalcular impuestos basados en el NCF para visualización correcta
-  let impuesto = 0;
-  let nombreImpuesto = 'ITBIS (18%)';
-  const ncfPrefix = factura.ncf ? factura.ncf.substring(0, 3) : '';
-  const esNotaCredito = ncfPrefix === 'B04';
-  const ncfAfectado = factura.ncf_modificado ? factura.ncf_modificado.substring(0, 3) : '';
-  
-  if (['B01', 'B02'].includes(ncfPrefix) || (esNotaCredito && ['B01', 'B02'].includes(ncfAfectado))) {
-     impuesto = subtotal * 0.18;
-  } else if (ncfPrefix === 'B15' || (esNotaCredito && ncfAfectado === 'B15')) {
-     impuesto = subtotal * 0.10;
-     nombreImpuesto = 'ISR (10%)';
-  } else if (ncfPrefix === 'B14' || (esNotaCredito && ncfAfectado === 'B14')) {
-     impuesto = 0;
-     nombreImpuesto = 'Exento';
-  } else {
-     impuesto = subtotal * 0.18; // Fallback estándar
+  if (!factura) {
+    mostrarNotificacion('Error: Factura no encontrada en el historial.', 'error');
+    return;
   }
-  
-  const total = subtotal + impuesto;
-  
-  // Determinar título del documento según NCF
-  let tituloDoc = 'FACTURA';
-  if (ncfPrefix === 'B01') tituloDoc = 'FACTURA DE CRÉDITO FISCAL';
-  else if (ncfPrefix === 'B02') tituloDoc = 'FACTURA DE CONSUMO';
-  else if (ncfPrefix === 'B14') tituloDoc = 'REGÍMENES ESPECIALES';
-  else if (ncfPrefix === 'B15') tituloDoc = 'GUBERNAMENTAL';
-  else if (ncfPrefix === 'B04') tituloDoc = 'NOTA DE CRÉDITO';
 
-  const filasHTML = items.map(item => `
-    <tr>
-      <td>${item.nombre}</td>
-      <td>${item.descripcion || ''}</td>
-      <td style="text-align: center;">${item.cantidad || 1}</td>
-      <td style="text-align: right;">RD$${(item.precioUnitario || 0).toFixed(2)}</td>
-      <td style="text-align: right;">RD$${(item.precio || 0).toFixed(2)}</td>
-    </tr>
-  `).join('');
+  mostrarNotificacion(`📄 Generando PDF para ${factura.ncf}...`, 'info');
 
-  const html = `
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-      <meta charset="utf-8">
-      <title>Factura ${factura.ncf}</title>
-      <style>
-        body { font-family: Arial, sans-serif; padding: 40px; max-width: 900px; margin: 0 auto; color: #333; }
-        .header { display: flex; justify-content: space-between; margin-bottom: 40px; border-bottom: 2px solid #2563eb; padding-bottom: 20px; }
-        .company-info h1 { color: #1e3a8a; margin: 0 0 5px 0; font-size: 28px; }
-        .company-info p { margin: 2px 0; font-size: 13px; color: #666; }
-        .invoice-info { text-align: right; }
-        .invoice-info h2 { color: #ea580c; margin: 0 0 10px 0; font-size: 18px; text-transform: uppercase; }
-        .invoice-info p { margin: 3px 0; font-size: 14px; font-weight: bold; }
-        .client-box { background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 30px; }
-        .client-box h3 { margin: 0 0 10px 0; font-size: 14px; color: #64748b; text-transform: uppercase; }
-        .client-box p { margin: 5px 0; font-weight: bold; font-size: 15px; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-        th { background: #1e3a8a; color: white; padding: 12px; text-align: left; font-size: 12px; text-transform: uppercase; }
-        td { padding: 12px; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
-        .totals { float: right; width: 300px; }
-        .totals-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #cbd5e1; }
-        .totals-row.final { border-bottom: none; border-top: 2px solid #1e3a8a; margin-top: 10px; padding-top: 10px; font-size: 18px; color: #1e3a8a; }
-        .footer { clear: both; margin-top: 60px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 20px; }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        <div class="company-info">
-          <h1>ServiGaco</h1>
-          <p>RNC: 131279589</p>
-          <p>Tel: (809) 682-1075</p>
-          <p>Santo Domingo, República Dominicana</p>
-        </div>
-        <div class="invoice-info">
-          <h2>${tituloDoc}</h2>
-          <p>NCF: ${factura.ncf}</p>
-          <p>Fecha: ${fecha}</p>
-          <p style="color: #64748b; font-size: 12px; margin-top: 5px;">Válida hasta: 31/12/2026</p>
-        </div>
-      </div>
-      <div class="client-box">
-        <h3>Datos del Cliente</h3>
-        <p>Razón Social: <span style="color: #1e3a8a;">${factura.razon_social}</span></p>
-        <p>RNC / Cédula: ${factura.rnc_cliente}</p>
-      </div>
-      <table>
-        <thead><tr><th>Servicio</th><th>Descripción</th><th style="text-align: center;">Cant.</th><th style="text-align: right;">Precio Unit.</th><th style="text-align: right;">Total</th></tr></thead>
-        <tbody>${filasHTML}</tbody>
-      </table>
-      <div class="totals">
-        <div class="totals-row"><span>Subtotal:</span><span>RD$${subtotal.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</span></div>
-        <div class="totals-row"><span>${nombreImpuesto}:</span><span>RD$${impuesto.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</span></div>
-        <div class="totals-row final"><strong>TOTAL:</strong><strong>RD$${total.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</strong></div>
-      </div>
-      <div class="footer"><p>Gracias por preferirnos. Factura generada electrónicamente.</p></div>
-    </body>
-    </html>
-  `;
+  // Preparar datos para el backend
+  const items = Array.isArray(factura.items) ? factura.items : (factura.items ? Object.values(factura.items) : []);
+  const subtotal = items.reduce((s, i) => s + parseFloat(i.precio || 0), 0);
+  const itbis = factura.itbis_total || (subtotal * 0.18); // Usar el guardado o recalcular
 
-  const ventana = window.open('', 'Factura', 'width=1000,height=800');
-  ventana.document.write(html);
-  ventana.document.close();
-  setTimeout(() => ventana.print(), 500);
+  const datosFactura = {
+    id: factura.id,
+    ncf: factura.ncf,
+    fecha: new Date(factura.fecha_facturacion).toLocaleDateString('es-DO'),
+    tituloDocumento: factura.tipo_documento || 'FACTURA',
+    cliente: {
+      nombre: factura.razon_social,
+      rnc: factura.rnc_cliente,
+      telefono: factura.telefono || ''
+    },
+    items: items,
+    subtotal: subtotal,
+    impuestos: [{ nombre: 'ITBIS (18%)', monto: itbis }],
+    total: factura.total,
+    condicion: factura.condicion_venta,
+    vencimiento: factura.fecha_vencimiento ? new Date(factura.fecha_vencimiento).toLocaleDateString('es-DO') : 'N/A',
+    abono: factura.abono || 0 // Incluir abono para el PDF
+  };
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/generar-factura-pdf`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(datosFactura)
+    });
+
+    if (!response.ok) throw new Error('Error generando PDF desde el servidor');
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Factura_${factura.ncf}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    a.remove();
+    
+    mostrarNotificacion('✅ PDF de la factura descargado.', 'success');
+
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion(error.message, 'error');
+  }
 }
 
 async function anularFactura(idFactura) {
@@ -2652,6 +2779,330 @@ async function procesarAnulacion() {
     console.error(error);
     mostrarNotificacion('Error al anular: ' + error.message, 'error');
   }
+}
+
+// ============================================
+// ✏️ EDICIÓN DE FACTURA (MODAL ROBUSTO)
+// ============================================
+
+// --- Helpers para el modal de edición (portado desde app.js) ---
+function formatearMonedaModal(valor) { 
+    return new Intl.NumberFormat('es-DO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(valor || 0); 
+}
+
+function renderizarItemsEditablesModal(items) {
+    if (!items || items.length === 0) {
+        return '<tr><td colspan="5" class="p-8 text-center text-gray-400 italic">No hay items en esta factura. Agrega uno para empezar.</td></tr>';
+    }
+
+    return items.map((item, index) => {
+        const cantidad = item.cantidad || 1;
+        const total = item.precio || 0;
+        const unitario = item.precioUnitario || (cantidad > 0 ? total / cantidad : 0) || 0;
+        
+        return `
+        <tr data-index="${index}" class="group hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+            <td class="p-3">
+                <input type="text" name="item_desc_${index}" value="${item.descripcion || item.nombre || ''}" class="w-full px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-medium transition-all">
+            </td>
+            <td class="p-3">
+                <input type="number" name="item_cant_${index}" value="${cantidad}" min="1" class="w-full px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-medium text-center transition-all" oninput="recalcularTotalesModal()">
+            </td>
+            <td class="p-3">
+                <input type="number" name="item_precio_${index}" value="${unitario.toFixed(2)}" min="0" step="0.01" class="w-full px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-medium text-right transition-all" oninput="recalcularTotalesModal()">
+            </td>
+            <td id="total_row_${index}" class="p-3 text-right font-bold text-gray-700 dark:text-gray-300">RD$ ${formatearMonedaModal(total)}</td>
+            <td class="p-3 text-center">
+                <button type="button" onclick="eliminarFilaModal(this)" class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all" title="Eliminar item">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                </button>
+            </td>
+        </tr>
+    `}).join('');
+}
+
+window.abrirModalEditarFactura = function(id) {
+    const factura = todasLasFacturas.find(f => f.id === id);
+    if (!factura) return mostrarNotificacion('Factura no encontrada en memoria', 'error');
+
+    const modalAnterior = document.getElementById('modalEditarFactura');
+    if (modalAnterior) modalAnterior.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'modalEditarFactura';
+    modal.className = 'fixed inset-0 z-[9999] flex items-center justify-center bg-gray-900 bg-opacity-75 backdrop-blur-sm p-4 animate-fade-in';
+
+    modal.innerHTML = `
+        <div class="bg-gray-50 dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-6xl flex flex-col max-h-[95vh] overflow-hidden relative" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center p-5 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-2xl font-black text-gray-800 dark:text-white tracking-tight flex items-center gap-3">
+                    <span class="text-4xl">✏️</span>
+                    <div>
+                        <span>Editar Factura</span>
+                        <span class="block text-sm font-mono text-blue-600 dark:text-blue-400">${factura.ncf || 'BORRADOR'}</span>
+                    </div>
+                </h3>
+                <button type="button" onclick="cerrarModalEditarFactura()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-3xl leading-none">&times;</button>
+            </div>
+            <div class="p-6 overflow-y-auto" id="contenidoModalEditar">
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+    document.body.style.overflow = 'hidden';
+
+    const items = Array.isArray(factura.items) ? factura.items : (factura.items ? Object.values(factura.items) : []);
+    
+    const htmlFormulario = `
+        <form id="formEdicionFactura" class="space-y-8">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                    <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-5 flex items-center gap-2 pb-3 border-b border-gray-100 dark:border-gray-700">Detalles</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Fecha Emisión</label>
+                            <input type="text" value="${new Date(factura.fecha_facturacion).toLocaleString('es-DO')}" disabled class="w-full px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-500 font-medium cursor-not-allowed">
+                        </div>
+                    </div>
+                </div>
+                <div class="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                    <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-5 flex items-center gap-2 pb-3 border-b border-gray-100 dark:border-gray-700">Datos del Cliente</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-2">RNC / Cédula</label>
+                            <input type="text" name="rnc_cliente" value="${factura.rnc_cliente || ''}" class="w-full px-4 py-3 rounded-xl bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-600 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none font-bold text-gray-800 dark:text-white">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-2">Razón Social / Nombre</label>
+                            <input type="text" name="razon_social" value="${factura.razon_social || ''}" class="w-full px-4 py-3 rounded-xl bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-600 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none font-bold text-gray-800 dark:text-white">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                    <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-5 flex items-center gap-2">
+                        <span class="bg-green-100 text-green-600 p-1.5 rounded-lg text-sm">💰</span> Condición de Pago
+                    </h2>
+                    <div class="flex flex-wrap gap-4">
+                        <label class="cursor-pointer relative">
+                            <input type="radio" name="condicion_venta_modal" value="contado" class="peer sr-only" ${!factura.condicion_venta || factura.condicion_venta === 'contado' ? 'checked' : ''}>
+                            <div class="px-5 py-3 rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-bold transition-all peer-checked:border-green-500 peer-checked:bg-green-50 peer-checked:text-green-700 hover:bg-white shadow-sm">
+                                💵 Contado
+                            </div>
+                        </label>
+                        <label class="cursor-pointer relative">
+                            <input type="radio" name="condicion_venta_modal" value="credito_15" class="peer sr-only" ${factura.condicion_venta === 'credito_15' ? 'checked' : ''}>
+                            <div class="px-5 py-3 rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-bold transition-all peer-checked:border-orange-500 peer-checked:bg-orange-50 peer-checked:text-orange-700 hover:bg-white shadow-sm">
+                                📅 Crédito 15 días
+                            </div>
+                        </label>
+                        <label class="cursor-pointer relative">
+                            <input type="radio" name="condicion_venta_modal" value="credito_30" class="peer sr-only" ${factura.condicion_venta === 'credito_30' ? 'checked' : ''}>
+                            <div class="px-5 py-3 rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-bold transition-all peer-checked:border-red-500 peer-checked:bg-red-50 peer-checked:text-red-700 hover:bg-white shadow-sm">
+                                📅 Crédito 30 días
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                    <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-5 flex items-center gap-2">
+                        <span class="bg-cyan-100 text-cyan-600 p-1.5 rounded-lg text-sm">💳</span> Método de Pago
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-2">Método</label>
+                            <select name="metodo_pago_modal" class="w-full px-4 py-3 rounded-xl bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-600 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none font-bold text-gray-800 dark:text-white">
+                                <option value="efectivo" ${factura.metodo_pago === 'efectivo' ? 'selected' : ''}>Efectivo</option>
+                                <option value="transferencia" ${factura.metodo_pago === 'transferencia' ? 'selected' : ''}>Transferencia</option>
+                                <option value="tarjeta" ${factura.metodo_pago === 'tarjeta' ? 'selected' : ''}>Tarjeta</option>
+                                <option value="cheque" ${factura.metodo_pago === 'cheque' ? 'selected' : ''}>Cheque</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-2">Abono</label>
+                            <input type="number" name="abono_modal" value="${factura.abono || 0}" min="0" step="0.01" class="w-full px-4 py-3 rounded-xl bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-600 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none font-bold text-gray-800 dark:text-white">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-2">Referencia</label>
+                            <input type="text" name="referencia_modal" value="${factura.referencia || ''}" placeholder="Ej: #Cheque, ID Trans." class="w-full px-4 py-3 rounded-xl bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-600 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none font-bold text-gray-800 dark:text-white">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">Items de la Factura</h2>
+                    <button type="button" class="py-2 px-4 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-200 transition-all transform hover:-translate-y-0.5 text-sm flex items-center gap-2" onclick="agregarItemVacioModal()">
+                        <span>➕</span> Agregar Item
+                    </button>
+                </div>
+                <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 mb-6">
+                    <table class="w-full border-collapse">
+                        <thead>
+                            <tr class="bg-gray-100 dark:bg-gray-700 text-left">
+                                <th class="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider w-[40%]">Descripción</th>
+                                <th class="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider w-[15%] text-center">Cant.</th>
+                                <th class="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider w-[20%] text-right">Precio Unit.</th>
+                                <th class="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider w-[20%] text-right">Subtotal</th>
+                                <th class="p-4 w-[5%]"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="itemsTableModal" class="divide-y divide-gray-100 dark:divide-gray-700">
+                            ${renderizarItemsEditablesModal(items)}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="flex flex-col md:flex-row justify-end items-start gap-8">
+                    <div class="mt-4">
+                        <label class="flex items-center gap-3 cursor-pointer group p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                            <input type="checkbox" id="checkItbisModal" onchange="recalcularTotalesModal()" class="w-5 h-5 text-blue-600 rounded focus:ring-blue-500">
+                            <span class="text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-blue-600 transition-colors">Aplicar ITBIS (18%)</span>
+                        </label>
+                    </div>
+                    <div class="w-full md:w-80 bg-gray-100 dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700">
+                        <div class="flex justify-between items-center mb-3 text-gray-600 dark:text-gray-400 text-sm">
+                            <span>Subtotal:</span>
+                            <span id="subtotalFacturaModal" class="font-bold">RD$ 0.00</span>
+                        </div>
+                        <div class="flex justify-between items-center mb-4 text-gray-600 dark:text-gray-400 text-sm">
+                            <span>ITBIS (18%):</span>
+                            <span id="itbisFacturaModal" class="font-bold text-orange-500">RD$ 0.00</span>
+                        </div>
+                        <div class="border-t border-gray-200 dark:border-gray-700 pt-4 flex justify-between items-center">
+                            <span class="font-black text-gray-800 dark:text-white text-lg">TOTAL</span>
+                            <span id="totalFacturaModal" class="font-black text-2xl text-blue-600 dark:text-blue-400">RD$ ${formatearMonedaModal(factura.total)}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="flex flex-wrap justify-end gap-4 pt-6 mt-4 border-t border-gray-200 dark:border-gray-700">
+                <button type="button" class="px-6 py-3 rounded-xl font-bold text-gray-600 bg-gray-200 hover:bg-gray-300 transition-colors" onclick="cerrarModalEditarFactura()">Cancelar</button>
+                <button type="button" onclick="guardarEdicionFactura('${id}')" class="px-8 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-500 hover:to-blue-700 shadow-lg shadow-blue-500/30 transform transition-all hover:-translate-y-1">💾 Guardar Cambios</button>
+            </div>
+        </form>`;
+
+    document.getElementById('contenidoModalEditar').innerHTML = htmlFormulario;
+
+    setTimeout(() => {
+        const tieneItbisGuardado = factura.itbis_total > 0 || (factura.aplicar_itbis === true);
+        document.getElementById('checkItbisModal').checked = tieneItbisGuardado;
+        recalcularTotalesModal();
+    }, 100);
+}
+
+window.cerrarModalEditarFactura = function() {
+    const modal = document.getElementById('modalEditarFactura');
+    if (modal) modal.remove();
+    document.body.style.overflow = 'auto';
+}
+
+window.agregarItemVacioModal = function() {
+    const tbody = document.getElementById('itemsTableModal');
+    if (tbody.rows.length === 1 && tbody.rows[0].cells.length > 1 && tbody.rows[0].innerText.includes('No hay items')) {
+        tbody.innerHTML = '';
+    }
+    let maxIndex = -1;
+    document.querySelectorAll('#itemsTableModal tr[data-index]').forEach(row => {
+        const idx = parseInt(row.getAttribute('data-index'));
+        if (idx > maxIndex) maxIndex = idx;
+    });
+    const newIndex = maxIndex + 1;
+
+    const row = document.createElement('tr');
+    row.setAttribute('data-index', newIndex);
+    row.className = "group hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors animate-fade-in";
+    row.innerHTML = renderizarItemsEditablesModal([{nombre: 'Nuevo Item', cantidad: 1, precio: 0, precioUnitario: 0}], newIndex).replace(/data-index="0"/, `data-index="${newIndex}"`);
+    tbody.insertAdjacentHTML('beforeend', renderizarItemsEditablesModal([{nombre: 'Nuevo Item', cantidad: 1, precio: 0, precioUnitario: 0, descripcion: ''}])[0].replace('data-index="0"', `data-index="${newIndex}"`));
+    recalcularTotalesModal();
+};
+
+window.eliminarFilaModal = function(btn) {
+    if (confirm('¿Eliminar este item?')) {
+        const row = btn.closest('tr');
+        row.remove();
+        recalcularTotalesModal();
+    }
+};
+
+window.recalcularTotalesModal = function() {
+    let subtotalGlobal = 0;
+    const rows = document.querySelectorAll('#itemsTableModal tr');
+
+    rows.forEach((row) => {
+        if (!row.dataset.index) return;
+        const index = row.dataset.index;
+        const inputCant = row.querySelector(`input[name="item_cant_${index}"]`);
+        const inputPrecio = row.querySelector(`input[name="item_precio_${index}"]`);
+        const cellTotal = document.getElementById(`total_row_${index}`);
+
+        const cantidad = parseFloat(inputCant.value) || 0;
+        const precio = parseFloat(inputPrecio.value) || 0;
+        const subtotal = cantidad * precio;
+
+        if(cellTotal) cellTotal.textContent = `RD$ ${formatearMonedaModal(subtotal)}`;
+        subtotalGlobal += subtotal;
+    });
+
+    const tieneItbis = document.getElementById('checkItbisModal').checked;
+    const itbis = tieneItbis ? subtotalGlobal * 0.18 : 0;
+    const total = subtotalGlobal + itbis;
+
+    document.getElementById('subtotalFacturaModal').textContent = `RD$ ${formatearMonedaModal(subtotalGlobal)}`;
+    document.getElementById('itbisFacturaModal').textContent = `RD$ ${formatearMonedaModal(itbis)}`;
+    document.getElementById('totalFacturaModal').textContent = `RD$ ${formatearMonedaModal(total)}`;
+};
+
+window.guardarEdicionFactura = async function(id) {
+    const items = [];
+    let nuevoTotal = 0;
+
+    document.querySelectorAll('#itemsTableModal tr').forEach((row) => {
+        if (!row.dataset.index) return;
+        const index = row.dataset.index;
+        const desc = row.querySelector(`input[name="item_desc_${index}"]`).value;
+        const cant = parseFloat(row.querySelector(`input[name="item_cant_${index}"]`).value) || 0;
+        const unitario = parseFloat(row.querySelector(`input[name="item_precio_${index}"]`).value) || 0;
+        const subtotal = cant * unitario;
+
+        nuevoTotal += subtotal;
+        items.push({ descripcion: desc, cantidad: cant, precioUnitario: unitario, precio: subtotal });
+    });
+    
+    const tieneItbis = document.getElementById('checkItbisModal').checked;
+    const itbis = tieneItbis ? nuevoTotal * 0.18 : 0;
+    const totalFinal = nuevoTotal + itbis;
+
+    const updates = {
+        razon_social: document.querySelector('input[name="razon_social"]').value,
+        rnc_cliente: document.querySelector('input[name="rnc_cliente"]').value,
+        items: items,
+        total: totalFinal,
+        itbis_total: itbis,
+        aplicar_itbis: tieneItbis,
+        condicion_venta: document.querySelector('input[name="condicion_venta_modal"]:checked')?.value,
+        metodo_pago: document.querySelector('select[name="metodo_pago_modal"]').value,
+        abono: parseFloat(document.querySelector('input[name="abono_modal"]').value) || 0,
+        referencia: document.querySelector('input[name="referencia_modal"]').value
+    };
+
+    try {
+        await fetch(`${API_BASE_URL}/api/facturas/${id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updates)
+        });
+        mostrarNotificacion('✅ Factura actualizada', 'success');
+        cerrarModalEditarFactura();
+        // Recargar lista si está visible
+        if (!document.getElementById('modalFacturasEmitidas').classList.contains('hidden')) {
+            abrirModalFacturas(); 
+        }
+    } catch (e) {
+        mostrarNotificacion('Error al guardar: ' + e.message, 'error');
+    }
 }
 
 // ⛔ SEGURIDAD FISCAL: Función de eliminación desactivada
@@ -2885,106 +3336,28 @@ async function generarReporteIT1(formato = 'excel') {
   const itbisAdelantado = 0.00; 
   const itbisAPagar = resumen.itbisFacturado - itbisAdelantado;
   
-  if (formato === 'excel') {
-    // --- EXPORTAR EXCEL ---
-    const data = [
-      { "CONCEPTO": "Periodo Fiscal", "VALOR": filtro },
-      { "CONCEPTO": "Cantidad Comprobantes", "VALOR": resumen.cantidadFacturas },
-      { "CONCEPTO": "", "VALOR": "" }, // Espacio
-      { "CONCEPTO": "TOTAL OPERACIONES (VENTAS BRUTAS)", "VALOR": parseFloat(resumen.totalOperaciones.toFixed(2)) },
-      { "CONCEPTO": "Ventas Exentas (B14)", "VALOR": parseFloat(resumen.ventasExentas.toFixed(2)) },
-      { "CONCEPTO": "Ventas Gravadas (Base Imponible)", "VALOR": parseFloat(resumen.ventasGravadas.toFixed(2)) },
-      { "CONCEPTO": "", "VALOR": "" },
-      { "CONCEPTO": "ITBIS Facturado (18%)", "VALOR": parseFloat(resumen.itbisFacturado.toFixed(2)) },
-      { "CONCEPTO": "ITBIS Adelantado (Compras)", "VALOR": parseFloat(itbisAdelantado.toFixed(2)) },
-      { "CONCEPTO": "ITBIS A PAGAR", "VALOR": parseFloat(itbisAPagar.toFixed(2)) }
-    ];
+  // --- EXPORTAR EXCEL ---
+  const data = [
+    { "CONCEPTO": "Periodo Fiscal", "VALOR": filtro },
+    { "CONCEPTO": "Cantidad Comprobantes", "VALOR": resumen.cantidadFacturas },
+    { "CONCEPTO": "", "VALOR": "" }, // Espacio
+    { "CONCEPTO": "TOTAL OPERACIONES (VENTAS BRUTAS)", "VALOR": parseFloat(resumen.totalOperaciones.toFixed(2)) },
+    { "CONCEPTO": "Ventas Exentas (B14)", "VALOR": parseFloat(resumen.ventasExentas.toFixed(2)) },
+    { "CONCEPTO": "Ventas Gravadas (Base Imponible)", "VALOR": parseFloat(resumen.ventasGravadas.toFixed(2)) },
+    { "CONCEPTO": "", "VALOR": "" },
+    { "CONCEPTO": "ITBIS Facturado (18%)", "VALOR": parseFloat(resumen.itbisFacturado.toFixed(2)) },
+    { "CONCEPTO": "ITBIS Adelantado (Compras)", "VALOR": parseFloat(itbisAdelantado.toFixed(2)) },
+    { "CONCEPTO": "ITBIS A PAGAR", "VALOR": parseFloat(itbisAPagar.toFixed(2)) }
+  ];
 
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const wscols = [{wch: 40}, {wch: 20}];
-    worksheet['!cols'] = wscols;
+  const worksheet = XLSX.utils.json_to_sheet(data);
+  const wscols = [{wch: 40}, {wch: 20}];
+  worksheet['!cols'] = wscols;
 
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Resumen IT-1");
-    XLSX.writeFile(workbook, `Resumen_IT1_${filtro}.xlsx`);
-    mostrarNotificacion('📗 Excel IT-1 generado', 'success');
-
-  } else {
-    // --- EXPORTAR PDF ---
-    imprimirReporteIT1(resumen, itbisAPagar);
-  }
-}
-
-function imprimirReporteIT1(resumen, itbisAPagar) {
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Reporte Mensual IT-1</title>
-      <style>
-        body { font-family: 'Arial', sans-serif; padding: 40px; color: #333; }
-        .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #2563eb; padding-bottom: 20px; }
-        .header h1 { margin: 0; color: #1e3a8a; font-size: 24px; }
-        .header p { margin: 5px 0; color: #666; }
-        .box { border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-bottom: 20px; background: #f9fafb; }
-        .row { display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px dashed #eee; padding-bottom: 5px; }
-        .row:last-child { border-bottom: none; }
-        .label { font-weight: bold; color: #555; }
-        .value { font-family: 'Courier New', monospace; font-weight: bold; }
-        .total-box { background: #1e3a8a; color: white; padding: 20px; border-radius: 8px; text-align: right; font-size: 18px; }
-        .footer { margin-top: 40px; text-align: center; font-size: 10px; color: #999; }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        <h1>Resumen de Declaración IT-1</h1>
-        <p>Periodo Fiscal: <strong>${resumen.periodo}</strong></p>
-        <p>ServiGaco - RNC: 131279589</p>
-      </div>
-
-      <div class="box">
-        <h3 style="margin-top:0; color:#2563eb;">1. Operaciones Reportadas</h3>
-        <div class="row">
-          <span class="label">Total Facturado (Ventas Brutas)</span>
-          <span class="value">RD$ ${resumen.totalOperaciones.toLocaleString('en-US', {minimumFractionDigits: 2})}</span>
-        </div>
-        <div class="row">
-          <span class="label">Total Ventas Exentas</span>
-          <span class="value">RD$ ${resumen.ventasExentas.toLocaleString('en-US', {minimumFractionDigits: 2})}</span>
-        </div>
-        <div class="row">
-          <span class="label">Total Ventas Gravadas (Base)</span>
-          <span class="value">RD$ ${resumen.ventasGravadas.toLocaleString('en-US', {minimumFractionDigits: 2})}</span>
-        </div>
-      </div>
-
-      <div class="box">
-        <h3 style="margin-top:0; color:#ea580c;">2. Liquidación del Impuesto</h3>
-        <div class="row">
-          <span class="label">ITBIS Facturado (18%)</span>
-          <span class="value">RD$ ${resumen.itbisFacturado.toLocaleString('en-US', {minimumFractionDigits: 2})}</span>
-        </div>
-        <div class="row">
-          <span class="label">ITBIS Adelantado (Compras)</span>
-          <span class="value">RD$ 0.00</span>
-        </div>
-      </div>
-
-      <div class="total-box">
-        ITBIS A PAGAR: <strong>RD$ ${itbisAPagar.toLocaleString('en-US', {minimumFractionDigits: 2})}</strong>
-      </div>
-
-      <div class="footer">
-        Documento generado para fines de control interno. Verificar con su contador antes de declarar en DGII.
-      </div>
-    </body>
-    </html>
-  `;
-
-  const ventana = window.open('', 'IT1', 'width=900,height=1100');
-  ventana.document.write(html);
-  ventana.document.close();
-  setTimeout(() => ventana.print(), 500);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Resumen IT-1");
+  XLSX.writeFile(workbook, `Resumen_IT1_${filtro}.xlsx`);
+  mostrarNotificacion('📗 Excel IT-1 generado', 'success');
 }
 
 async function abrirModalCotizaciones() {
@@ -2996,8 +3369,8 @@ async function abrirModalCotizaciones() {
 
   try {
     // Cargar datos frescos de Firebase
-    // OPTIMIZACIÓN: Solo las últimas 50 cotizaciones generales
-    const snapshot = await db.ref("cotizaciones").limitToLast(50).once("value");
+    // OPTIMIZACIÓN: Solo las últimas 20 cotizaciones para velocidad
+    const snapshot = await db.ref("cotizaciones").limitToLast(20).once("value");
     const data = snapshot.val();
 
     if (data) {
@@ -3257,37 +3630,48 @@ async function procesarLogin(e) {
 // ⚡ GESTIÓN DE COMBOS (FIREBASE)
 // ============================================
 
+let combosDataCache = {};
+
 function inicializarCombos() {
-  const lista = document.getElementById('listaCombos');
-  if (!lista) return;
+  const select = document.getElementById('selectCombos');
+  if (!select) return;
 
   // Escuchar cambios en tiempo real en la colección 'combos'
   db.ref('combos').on('value', (snapshot) => {
-    const data = snapshot.val();
-    lista.innerHTML = '';
-
-    if (!data) {
-      lista.innerHTML = '<p class="text-gray-400 text-sm col-span-full italic p-2">No hay combos guardados. Crea uno abajo.</p>';
-      return;
-    }
-
-    // Renderizar botones
-    Object.keys(data).forEach(key => {
-      const combo = data[key];
-      const precio = parseFloat(combo.precio || 0).toFixed(2);
-      
-      const btn = document.createElement('div');
-      btn.className = 'relative group';
-      btn.innerHTML = `
-        <button onclick="usarCombo('${key}')" class="w-full text-left p-3 rounded-xl bg-white border border-gray-200 hover:border-purple-500 hover:ring-1 hover:ring-purple-500 hover:shadow-md transition-all group-hover:-translate-y-0.5 flex justify-between items-center gap-2">
-          <span class="font-bold text-gray-700 text-sm leading-tight">${combo.nombre}</span>
-          <span class="text-purple-700 font-black text-md bg-purple-50 px-2 py-1 rounded whitespace-nowrap">RD$${precio}</span>
-        </button>
-        <button onclick="eliminarCombo('${key}')" class="absolute -top-2 -right-2 bg-red-100 text-red-500 rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-600 hover:text-white transition-all shadow-sm text-xs font-bold z-10" title="Eliminar Combo">✕</button>
-      `;
-      lista.appendChild(btn);
-    });
+    combosDataCache = snapshot.val() || {};
+    filtrarCombos();
   });
+}
+
+window.filtrarCombos = function() {
+  const select = document.getElementById('selectCombos');
+  const input = document.getElementById('inputFiltroCombos');
+  const filtro = input ? input.value.toLowerCase() : '';
+  
+  if (!select) return;
+
+  // Guardar selección actual
+  const valorActual = select.value;
+
+  select.innerHTML = '<option value="">-- Selecciona un paquete --</option>';
+
+  Object.keys(combosDataCache).forEach(key => {
+    const combo = combosDataCache[key];
+    const nombre = (combo.nombre || '').toLowerCase();
+    
+    if (nombre.includes(filtro)) {
+      const precio = parseFloat(combo.precio || 0).toFixed(2);
+      const option = document.createElement('option');
+      option.value = key;
+      option.textContent = `${combo.nombre} - RD$${precio}`;
+      select.appendChild(option);
+    }
+  });
+
+  // Restaurar selección si aún es válida
+  if (valorActual && select.querySelector(`option[value="${valorActual}"]`)) {
+    select.value = valorActual;
+  }
 }
 
 async function guardarNuevoCombo() {
@@ -3322,6 +3706,26 @@ async function guardarNuevoCombo() {
   }
 }
 
+function usarComboSeleccionado() {
+  const select = document.getElementById('selectCombos');
+  const id = select.value;
+  if (!id) {
+    mostrarNotificacion('Selecciona un combo primero', 'warning');
+    return;
+  }
+  usarCombo(id);
+}
+
+function eliminarComboSeleccionado() {
+  const select = document.getElementById('selectCombos');
+  const id = select.value;
+  if (!id) {
+    mostrarNotificacion('Selecciona un combo para eliminar', 'warning');
+    return;
+  }
+  eliminarCombo(id);
+}
+
 async function usarCombo(id) {
   try {
     const snapshot = await db.ref(`combos/${id}`).once('value');
@@ -3354,6 +3758,101 @@ async function eliminarCombo(id) {
       mostrarNotificacion('Error al eliminar', 'error');
     }
   }
+}
+
+// ============================================
+// ⚙️ GESTIÓN DE NCF (MODAL)
+// ============================================
+
+async function abrirModalNCF() {
+    // 🛡️ VERIFICACIÓN DE SEGURIDAD
+    if (!verificarPermisoAdmin()) return;
+
+    document.getElementById('modalConfiguracionNCF').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    cargarEstadoNCF();
+}
+
+async function cargarEstadoNCF() {
+    const tbody = document.getElementById('tablaEstadoNCF');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-400">Cargando...</td></tr>';
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/ncf/estado`);
+        const data = await res.json();
+        tbody.innerHTML = '';
+
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-400">No hay rangos configurados</td></tr>';
+            return;
+        }
+
+        data.forEach(item => {
+            let estadoHtml = '<span class="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-1 rounded text-xs">Activo</span>';
+            let rowClass = '';
+
+            if (item.agotado) {
+                estadoHtml = '<span class="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 px-2 py-1 rounded text-xs font-bold">AGOTADO</span>';
+                rowClass = 'bg-red-50 dark:bg-red-900/10';
+            } else if (item.alerta) {
+                estadoHtml = '<span class="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 px-2 py-1 rounded text-xs font-bold">POCOS</span>';
+            }
+
+            const tr = document.createElement('tr');
+            tr.className = `border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${rowClass}`;
+            tr.innerHTML = `
+                <td class="p-4 font-bold text-gray-900 dark:text-white">${item.tipo}</td>
+                <td class="p-4 font-mono text-blue-600 dark:text-blue-400">${item.actual}</td>
+                <td class="p-4 font-mono text-gray-500 dark:text-gray-400">${item.hasta}</td>
+                <td class="p-4 font-bold ${item.alerta ? 'text-yellow-600' : (item.agotado ? 'text-red-600' : 'text-green-600')}">${item.disponibles}</td>
+                <td class="p-4 text-center">${estadoHtml}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (error) {
+        console.error(error);
+        tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-red-500">Error cargando estado</td></tr>';
+    }
+}
+
+async function guardarConfiguracionNCF(e) {
+    e.preventDefault();
+    const btn = e.target.querySelector('button');
+    const originalText = btn.innerText;
+    btn.disabled = true;
+    btn.innerText = 'Guardando...';
+
+    const tipo = document.getElementById('ncfTipoConfig').value;
+    const inicio = document.getElementById('ncfSecuenciaInicio').value;
+    const fin = document.getElementById('ncfSecuenciaFin').value;
+
+    // Construir NCF completo automáticamente (Tipo + 8 dígitos)
+    const desde = tipo + String(inicio).padStart(8, '0');
+    const hasta = tipo + String(fin).padStart(8, '0');
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/ncf/configurar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ desde, hasta })
+        });
+
+        const result = await res.json();
+
+        if (!res.ok) throw new Error(result.error);
+
+        mostrarNotificacion('✅ ' + result.message, 'success');
+        document.getElementById('formNCF').reset();
+        cargarEstadoNCF();
+
+    } catch (error) {
+        mostrarNotificacion('❌ ' + error.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerText = originalText;
+    }
 }
 
 // ============================================
@@ -3421,9 +3920,9 @@ function mostrarBienvenida(nombre) {
     card.style.opacity = '1';
   });
 
-  // 4. Remover después de 4 segundos (duración extendida)
+  // 4. Cerrar automáticamente
   setTimeout(() => {
     overlay.style.opacity = '0';
     setTimeout(() => overlay.remove(), 500);
-  }, 4000);
+  }, 2500);
 }

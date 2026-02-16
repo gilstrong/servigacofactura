@@ -1,0 +1,143 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+.container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); overflow: hidden; }
+.header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }
+.header h1 { font-size: 2rem; margin-bottom: 10px; }
+.status-badge { display: inline-block; padding: 8px 20px; border-radius: 20px; font-size: 0.9rem; font-weight: bold; margin-top: 10px; }
+.status-borrador { background: #fbbf24; color: #92400e; }
+.status-vigente { background: #34d399; color: #065f46; }
+.status-impresa { background: #60a5fa; color: #1e3a8a; }
+.status-anulada { background: #f87171; color: #991b1b; }
+.content { padding: 40px; }
+.alert { padding: 15px 20px; border-radius: 8px; margin-bottom: 25px; display: flex; align-items: center; gap: 15px; }
+.alert-warning { background: #fef3c7; border-left: 4px solid #f59e0b; color: #92400e; }
+.alert-info { background: #dbeafe; border-left: 4px solid #3b82f6; color: #1e3a8a; }
+.alert-success { background: #d1fae5; border-left: 4px solid #10b981; color: #065f46; }
+.alert-error { background: #fee2e2; border-left: 4px solid #ef4444; color: #991b1b; }
+.form-section { margin-bottom: 30px; }
+.form-section h2 { color: #1f2937; font-size: 1.3rem; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 20px; }
+.form-group { display: flex; flex-direction: column; }
+.form-group label { font-weight: 600; color: #374151; margin-bottom: 8px; font-size: 0.95rem; }
+.form-group input, .form-group select, .form-group textarea { padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem; transition: all 0.3s ease; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+.form-group input:disabled, .form-group select:disabled { background: #f3f4f6; cursor: not-allowed; }
+.items-table { width: 100%; border-collapse: collapse; margin-top: 20px; overflow: hidden; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+.items-table thead { background: #667eea; color: white; }
+.items-table th, .items-table td { padding: 15px; text-align: left; }
+.items-table tbody tr { border-bottom: 1px solid #e5e7eb; }
+.items-table tbody tr:hover { background: #f9fafb; }
+.btn-group { display: flex; gap: 15px; justify-content: flex-end; margin-top: 30px; flex-wrap: wrap; }
+button { padding: 12px 30px; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 8px; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+.btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+.btn-success { background: #10b981; color: white; }
+.btn-success:hover:not(:disabled) { background: #059669; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4); }
+.btn-danger { background: #ef4444; color: white; }
+.btn-danger:hover:not(:disabled) { background: #dc2626; }
+.btn-secondary { background: #6b7280; color: white; }
+.btn-secondary:hover:not(:disabled) { background: #4b5563; }
+.history-section { margin-top: 40px; padding: 20px; background: #f9fafb; border-radius: 8px; }
+.history-item { padding: 15px; background: white; border-radius: 6px; margin-bottom: 10px; border-left: 4px solid #667eea; }
+.history-item strong { color: #667eea; }
+.loading { text-align: center; padding: 60px; color: #6b7280; }
+.spinner { border: 4px solid #f3f4f6; border-top: 4px solid #667eea; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+.total-box { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; text-align: right; margin-top: 20px; }
+.total-box h3 { font-size: 1.8rem; margin-top: 10px; }
+
+/* Estilos para edición */
+.input-editable { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.95rem; }
+.input-editable:focus { border-color: #667eea; outline: 2px solid rgba(102, 126, 234, 0.2); }
+
+.radio-group { display: flex; gap: 20px; flex-wrap: wrap; padding: 10px 0; }
+.radio-label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; color: #374151; background: #f3f4f6; padding: 10px 15px; border-radius: 8px; border: 1px solid #e5e7eb; transition: all 0.2s; }
+.radio-label:hover { background: #e5e7eb; }
+.radio-label input[type="radio"] { width: 18px; height: 18px; accent-color: #667eea; margin: 0; }
+
+/* =========================================
+   🖨️ ESTILOS DE IMPRESIÓN (CLEAN PRINT)
+   ========================================= */
+@media print {
+    /* Ocultar elementos de interfaz y navegación */
+    .btn-group, 
+    .history-section, 
+    .alert, 
+    button, 
+    .btn-secondary, 
+    .btn-primary, 
+    .btn-success, 
+    .btn-danger,
+    .loading,
+    .spinner,
+    .form-group:has(#checkItbis) { /* Ocultar checkbox ITBIS */
+        display: none !important;
+    }
+
+    /* Resetear contenedor principal */
+    body { background: white; padding: 0; margin: 0; font-size: 12pt; color: black; }
+    .container { box-shadow: none; max-width: 100%; width: 100%; margin: 0; padding: 0; border: none; }
+    .content { padding: 0; }
+
+    /* Cabecera limpia */
+    .header { background: white; color: black; padding: 20px 0; text-align: left; border-bottom: 2px solid #000; margin-bottom: 20px; }
+    .header h1 { color: #000; font-size: 24pt; margin: 0; }
+    .header p { color: #333; }
+
+    /* Secciones */
+    .form-section { margin-bottom: 20px; page-break-inside: avoid; }
+    .form-section h2 { color: #000; font-size: 14pt; border-bottom: 1px solid #000; padding-bottom: 5px; margin-bottom: 10px; }
+
+    /* Inputs como texto plano */
+    input, select, textarea, .input-editable {
+        border: none !important;
+        background: transparent !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+        font-weight: normal;
+        color: black !important;
+        width: auto !important;
+        display: inline-block;
+        font-size: 11pt;
+        -webkit-appearance: none;
+        appearance: none;
+    }
+    
+    /* Ocultar flechas de inputs numéricos */
+    input[type=number]::-webkit-inner-spin-button, 
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+    /* Etiquetas más discretas */
+    .form-group label { color: #666; font-size: 9pt; margin-bottom: 0; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* Tabla de items profesional */
+    .items-table { box-shadow: none; border: 1px solid #000; width: 100%; }
+    .items-table thead { background: #eee !important; color: black !important; -webkit-print-color-adjust: exact; }
+    .items-table th { border-bottom: 1px solid #000; font-weight: bold; padding: 8px; font-size: 10pt; }
+    .items-table td { border-bottom: 1px solid #ccc; padding: 8px; font-size: 10pt; }
+    
+    /* Ocultar columna de eliminar */
+    .items-table th:last-child, .items-table td:last-child { display: none; }
+
+    /* Totales alineados a la derecha */
+    .total-box {
+        background: transparent !important;
+        color: black !important;
+        border: none;
+        border-top: 2px solid #000;
+        padding-top: 10px;
+        margin-top: 20px;
+        width: 40%;
+        margin-left: auto;
+    }
+    .total-box h3 { color: black; font-size: 16pt; }
+    .total-box div { color: black !important; opacity: 1 !important; }
+
+    /* Condición de pago: Mostrar solo la seleccionada */
+    .radio-group { display: block; }
+    .radio-label { border: none; background: transparent; padding: 0; margin-right: 15px; display: none; }
+    .radio-label:has(input:checked) { display: inline-block; font-weight: bold; border: 1px solid #000; padding: 5px 10px; }
+    .radio-label input { display: none; }
+}

@@ -10,7 +10,7 @@ const crearFactura = async (req, res) => {
   }
 
   try {
-    // 1. Obtener secuencia de NCF (Transacción atómica en el SERVIDOR)
+    // 1. Obtener secuencia de NCF (Transacción atómica)
     const secuenciaRef = db.ref(`secuencias_ncf/${tipoNCF}`);
     const result = await secuenciaRef.transaction((currentData) => {
       if (currentData === null) return { actual: 1 };
@@ -31,7 +31,6 @@ const crearFactura = async (req, res) => {
       origen_cotizacion: cotizacion.id
     };
 
-    // Eliminamos el ID original de la cotización para que Firebase genere uno nuevo único para la factura
     delete nuevaFactura.id; 
 
     // 3. Guardar en nodo 'facturas'

@@ -4,11 +4,11 @@ const path = require("path");
 let db;
 
 try {
-  // Construimos la ruta absoluta de forma segura
-  // __dirname es 'backend/src/config', subimos uno (..) para buscar en 'backend/src'
+  // __dirname = backend/src/config
+  // ..        = backend/src (donde debe estar serviceAccountKey.json)
   const serviceAccountPath = path.join(__dirname, "..", "serviceAccountKey.json");
   
-  // Verificamos si ya existe una app inicializada para evitar el error "Default app already exists"
+  // Singleton: Prevenir error "Default app already exists"
   if (!admin.apps.length) {
     const serviceAccount = require(serviceAccountPath);
     
@@ -21,8 +21,8 @@ try {
   
   db = admin.database();
 } catch (error) {
-  console.error("❌ Error en configuración de Firebase:", error.message);
-  // No lanzamos throw para no tumbar el servidor completo, pero db quedará undefined
+  console.error("❌ Error crítico en Firebase Config:", error.message);
+  // No hacemos process.exit() aquí para permitir diagnóstico, pero db será undefined
 }
 
 module.exports = { db };
