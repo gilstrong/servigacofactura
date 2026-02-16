@@ -3,41 +3,55 @@ const fs = require('fs');
 const path = require('path');
 
 let browser;
+let logoBase64Cache = null;
 
-// Inicializar el navegador globalmente (Patrón Singleton)
-(async () => {
+// Configuración optimizada de argumentos para Render (Más agresiva)
+const puppeteerArgs = [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-gpu',
+    '--disable-dev-shm-usage',
+    '--disable-accelerated-2d-canvas',
+    '--no-first-run',
+    '--no-zygote',
+    '--single-process',
+    '--font-render-hinting=none',
+    '--disable-extensions',            // Nuevo: Desactiva extensiones
+    '--disable-background-networking', // Nuevo: Evita tráfico de red oculto
+    '--disable-default-apps',          // Nuevo
+    '--disable-sync',                  // Nuevo: Evita sincronización de Google
+    '--mute-audio'                     // Nuevo: Ahorra recursos de audio
+];
+
+// Función centralizada para iniciar el navegador
+const initBrowser = async () => {
+    if (browser && browser.isConnected()) return;
     try {
+        console.log("🚀 Iniciando navegador Puppeteer...");
         browser = await puppeteer.launch({
             headless: true,
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-gpu',
-                '--disable-dev-shm-usage',
-                '--disable-accelerated-2d-canvas',
-                '--no-first-run',
-                '--no-zygote',
-                '--single-process',
-                '--font-render-hinting=none'
-            ]
+            args: puppeteerArgs
         });
-        console.log("🚀 Navegador Puppeteer iniciado globalmente.");
+        console.log("✅ Navegador listo.");
     } catch (e) {
-        console.error("❌ Error al iniciar el navegador global:", e);
+        console.error("❌ Error iniciando navegador:", e);
     }
-})();
+};
 
-// Función auxiliar para cargar logo en Base64
-const getLogoBase64 = () => {
+// Inicialización al arranque (Browser + Logo Caché)
+(async () => {
+    // 1. Cargar Logo en memoria UNA SOLA VEZ (Evita lectura de disco por petición)
     try {
         const logoPath = path.join(__dirname, '../../../public/assets/logo.png');
         if (fs.existsSync(logoPath)) {
             const bitmap = fs.readFileSync(logoPath);
-            return `data:image/png;base64,${bitmap.toString('base64')}`;
+            logoBase64Cache = `data:image/png;base64,${bitmap.toString('base64')}`;
         }
-    } catch (e) { console.error("Error cargando logo:", e); }
-    return null;
-};
+    } catch (e) { console.error("Error cargando logo al inicio:", e); }
+
+    // 2. Iniciar navegador
+    await initBrowser();
+})();
 
 const generarPDF = async (req, res) => {
     let page = null;
@@ -46,7 +60,7 @@ const generarPDF = async (req, res) => {
         const data = req.body || {};
         
         // 1. Preparar datos y Logo
-        const logoSrc = getLogoBase64();
+        const logoSrc = logoBase64Cache; // Usar variable en memoria (Instantáneo)
         const { ncf, fecha, cliente, items, subtotal, impuestos, total, tituloDocumento, condicion } = data;
         
         // Validación de seguridad para evitar crash si items es undefined
@@ -193,21 +207,7 @@ const generarPDF = async (req, res) => {
         // 3. Generar PDF con Puppeteer
         // Verificar si el navegador está conectado, si no, reiniciarlo
         if (!browser || !browser.isConnected()) {
-            console.log("⚠️ Navegador desconectado o no inicializado, relanzando...");
-            browser = await puppeteer.launch({
-                headless: true,
-                args: [
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-gpu',
-                    '--disable-dev-shm-usage',
-                    '--disable-accelerated-2d-canvas',
-                    '--no-first-run',
-                    '--no-zygote',
-                    '--single-process',
-                    '--font-render-hinting=none'
-                ]
-            });
+            await initBrowser();
         }
 
         page = await browser.newPage();
