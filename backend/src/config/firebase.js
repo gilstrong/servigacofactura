@@ -1,17 +1,30 @@
 const admin = require("firebase-admin");
+const path = require("path");
 
-const serviceAccount = {
-  project_id: process.env.FIREBASE_PROJECT_ID,
-  client_email: process.env.FIREBASE_CLIENT_EMAIL,
-  private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
-};
+if (!admin.apps.length) {
+  if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY) {
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+      }),
+      databaseURL: "https://servigaco-default-rtdb.firebaseio.com",
+    });
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  databaseURL: "https://servigaco-default-rtdb.firebaseio.com"
-});
+    console.log("🔥 Firebase inicializado desde ENV");
+  } else {
+    const serviceAccount = require(path.join(__dirname, "../../serviceAccountKey.json"));
+
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+      databaseURL: "https://servigaco-default-rtdb.firebaseio.com",
+    });
+
+    console.log("🔥 Firebase inicializado desde JSON local");
+  }
+}
 
 const db = admin.database();
-console.log("🔥 Firebase Admin inicializado correctamente desde variables de entorno.");
 
-module.exports = { db };
+module.exports = { admin, db };
