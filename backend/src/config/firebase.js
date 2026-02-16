@@ -1,28 +1,17 @@
 const admin = require("firebase-admin");
-const path = require("path");
 
-let db;
+const serviceAccount = {
+  project_id: process.env.FIREBASE_PROJECT_ID,
+  client_email: process.env.FIREBASE_CLIENT_EMAIL,
+  private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
+};
 
-try {
-  // Construimos la ruta absoluta de forma segura
-  // __dirname es 'backend/src/config', subimos uno (..) para buscar en 'backend/src'
-  const serviceAccountPath = path.join(__dirname, "..", "serviceAccountKey.json");
-  
-  // Verificamos si ya existe una app inicializada para evitar el error "Default app already exists"
-  if (!admin.apps.length) {
-    const serviceAccount = require(serviceAccountPath);
-    
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-      databaseURL: "https://servigaco-default-rtdb.firebaseio.com"
-    });
-    console.log("🔥 Firebase Admin inicializado correctamente.");
-  }
-  
-  db = admin.database();
-} catch (error) {
-  console.error("❌ Error en configuración de Firebase:", error.message);
-  // No lanzamos throw para no tumbar el servidor completo, pero db quedará undefined
-}
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+  databaseURL: "https://servigaco-default-rtdb.firebaseio.com"
+});
+
+const db = admin.database();
+console.log("🔥 Firebase Admin inicializado correctamente desde variables de entorno.");
 
 module.exports = { db };
