@@ -17,15 +17,20 @@ const crearFactura = async (req, res) => {
   console.log(`🔍 [Facturación] Procesando solicitud para NCF: '${tipoNCF}'`);
 
   if (!cotizacion || !cliente || !tipoNCF) {
-    return res.status(400).json({ 
-      error: "Datos incompletos para facturar. Se requiere cotización, cliente y tipo de NCF." 
+    return res.status(400).json({
+      error: "Datos incompletos para facturar. Se requiere cotización, cliente y tipo de NCF."
     });
   }
 
+  // Normalizar items: Firebase puede devolverlos como objeto en lugar de array
+  if (cotizacion.items && !Array.isArray(cotizacion.items)) {
+    cotizacion.items = Object.values(cotizacion.items);
+  }
+
   try {
-    // Obtener la secuencia de NCF de forma atómica para evitar duplicados
+    // Obtener la referencia de secuencia NCF
     const secuenciaRef = db.ref(`secuencias_ncf/${tipoNCF}`);
-    
+
     // 2. PRE-VALIDACIÓN ESTRICTA (Lectura sin modificación)
     const snapshot = await secuenciaRef.once('value');
     const data = snapshot.val();
@@ -33,58 +38,59 @@ const crearFactura = async (req, res) => {
     // Validación 1: Existencia
     if (!snapshot.exists() || !data) {
       console.warn(`⚠️ [Facturación] Intento de uso de NCF no configurado: ${tipoNCF}`);
-      return res.status(400).json({ 
-        error: `El tipo de NCF '${tipoNCF}' no está configurado en el sistema.` 
+      return res.status(400).json({
+        error: `El tipo de NCF '${tipoNCF}' no está configurado en el sistema.`
       });
     }
 
-    // Validación 2.1: Fecha de Vencimiento
+    // Validación 2: Fecha de Vencimiento
     if (data.fecha_vencimiento) {
       const hoy = new Date().toISOString().split('T')[0];
       if (hoy > data.fecha_vencimiento) {
-        return res.status(400).json({ 
-          error: `La secuencia NCF '${tipoNCF}' venció el ${data.fecha_vencimiento}.` 
+        return res.status(400).json({
+          error: `La secuencia NCF '${tipoNCF}' venció el ${data.fecha_vencimiento}.`
         });
       }
     }
 
-    // Validación 2.2: Activo (consistente con la transacción)
+    // Validación 3: Activo (soporta boolean true/false y string "true"/"false")
     if (data.activo === false || data.activo === 'false') {
-      return res.status(400).json({ 
-        error: `La secuencia NCF '${tipoNCF}' está desactivada.` 
+      return res.status(400).json({
+        error: `La secuencia NCF '${tipoNCF}' está desactivada.`
       });
     }
 
-    // Validación 3: Campos obligatorios y tipos
+    // Validación 4: Campos obligatorios y tipos
     const actual = parseInt(data.actual, 10);
     const hasta  = parseInt(data.hasta,  10);
 
     if (isNaN(actual) || isNaN(hasta)) {
-      return res.status(400).json({ 
-        error: `Configuración corrupta para '${tipoNCF}'. Faltan campos 'actual' o 'hasta'.` 
+      return res.status(400).json({
+        error: `Configuración corrupta para '${tipoNCF}'. Faltan campos 'actual' o 'hasta'.`
       });
     }
 
-    // Validación 4: Límite (Pre-check)
+    // Validación 5: Límite (Pre-check antes de la transacción)
     if (actual >= hasta) {
-      return res.status(400).json({ 
-        error: `⛔ Comprobantes '${tipoNCF}' AGOTADOS. Actual: ${actual}, Límite: ${hasta}.` 
+      return res.status(400).json({
+        error: `⛔ Comprobantes '${tipoNCF}' AGOTADOS. Actual: ${actual}, Límite: ${hasta}.`
       });
     }
 
-    // 3. TRANSACCIÓN ATÓMICA (Incremento seguro)
+    // 3. TRANSACCIÓN ATÓMICA (Incremento seguro y concurrente)
     const result = await secuenciaRef.transaction((currentData) => {
-      // Abortar si el nodo no existe (evita creación accidental)
-      if (currentData === null) return;
+      // Firebase llama primero con null para "tentar" el resultado.
+      // Retornar currentData (null) le dice que reintente — NO abortamos aquí.
+      if (currentData === null) return currentData;
 
       // Normalización robusta del campo 'activo' (soporta boolean y string)
       const isActivo = currentData.activo === true || currentData.activo === 'true';
-      if (!isActivo) return;
+      if (!isActivo) return; // Abort intencional
 
       // Validación atómica de fecha de vencimiento
       if (currentData.fecha_vencimiento) {
         const hoy = new Date().toISOString().split('T')[0];
-        if (hoy > currentData.fecha_vencimiento) return;
+        if (hoy > currentData.fecha_vencimiento) return; // Abort intencional
       }
 
       // Obtener valores numéricos de forma segura
@@ -93,28 +99,35 @@ const crearFactura = async (req, res) => {
       const hasta  = Number(currentData.hasta);
 
       // Abortar si la configuración está corrupta
-      if (isNaN(actual) || isNaN(desde) || isNaN(hasta)) return;
+      if (isNaN(actual) || isNaN(desde) || isNaN(hasta)) return; // Abort intencional
 
       // Calcular siguiente número y validar rango
       let siguiente = actual + 1;
       if (siguiente < desde) siguiente = desde;
-      if (siguiente > hasta) return; // Agotado
+      if (siguiente > hasta) return; // Abort intencional — agotado
 
       return { ...currentData, actual: siguiente };
     });
 
     // 4. Manejo del resultado de la transacción
     if (!result.committed || !result.snapshot.exists()) {
-      return res.status(400).json({ 
-        error: `No se pudo generar el NCF '${tipoNCF}'. Verifique que esté activo y tenga disponibilidad.` 
+      return res.status(400).json({
+        error: `No se pudo generar el NCF '${tipoNCF}'. Verifique que esté activo y tenga disponibilidad.`
       });
     }
 
     const numeroSecuencia = parseInt(result.snapshot.val().actual, 10);
-    
+
     console.log(`✅ [Facturación] Secuencia ${tipoNCF} consumida. Nuevo contador en DB: ${result.snapshot.val().actual}`);
-    
+
     const ncfCompleto = tipoNCF + String(numeroSecuencia).padStart(8, '0');
+
+    // Recalcular total desde los items para asegurar consistencia
+    const items = cotizacion.items || [];
+    const subtotal = items.reduce((sum, item) => sum + parseFloat(item.precio || 0), 0);
+    const tieneItbis = tipoNCF === 'B01' || tipoNCF === 'B02';
+    const itbisCalculado = tieneItbis ? subtotal * 0.18 : 0;
+    const totalCalculado = subtotal + itbisCalculado;
 
     // Crear el objeto final de la factura
     const nuevaFactura = {
@@ -132,7 +145,10 @@ const crearFactura = async (req, res) => {
       condicion_venta: condicionVenta || 'contado',
       metodo_pago: metodoPago || 'efectivo',
       referencia: referenciaPago || '',
-      abono: abono || 0
+      abono: parseFloat(abono) || 0,
+      subtotal: subtotal,
+      itbis_total: itbisCalculado,
+      total: cotizacion.total || totalCalculado // Usar el total del frontend si viene, si no el calculado
     };
 
     delete nuevaFactura.id;
@@ -140,16 +156,18 @@ const crearFactura = async (req, res) => {
     // Guardar la nueva factura
     const facturaRef = await db.ref('facturas').push(nuevaFactura);
 
-    // Marcar la cotización como facturada
-    await db.ref(`cotizaciones/${cotizacion.id}`).update({ 
-      ncf: ncfCompleto, 
-      estado: 'facturada' 
-    });
+    // Marcar la cotización original como facturada
+    if (cotizacion.id) {
+      await db.ref(`cotizaciones/${cotizacion.id}`).update({
+        ncf: ncfCompleto,
+        estado: 'facturada'
+      });
+    }
 
-    res.status(201).json({ 
-      success: true, 
-      ncf: ncfCompleto, 
-      id: facturaRef.key, 
+    res.status(201).json({
+      success: true,
+      ncf: ncfCompleto,
+      id: facturaRef.key,
       mensaje: `Factura ${ncfCompleto} generada correctamente`,
       factura: { id: facturaRef.key, ...nuevaFactura }
     });
@@ -178,7 +196,7 @@ const editarFactura = async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
     const facturaRef = db.ref(`facturas/${id}`);
-    
+
     // Obtener factura actual para historial
     const snapshot = await facturaRef.once('value');
     if (!snapshot.exists()) {
@@ -218,7 +236,7 @@ const marcarComoImpresa = async (req, res) => {
   }
 };
 
-module.exports = { 
+module.exports = {
   crearFactura,
   obtenerFactura,
   editarFactura,
