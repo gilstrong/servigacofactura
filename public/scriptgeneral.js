@@ -32,7 +32,7 @@ const API_BASE_URL = (window.location.port === '5500' || window.location.port ==
 // ============================================
 const firebaseConfig = {
   apiKey: "AIzaSyBgVrMPSwZg3O5zbuIozstpG0bM8XFEeZE",
-  authDomain: "servigaco.firebaseapp.com",
+  authDomain: "servigacofactura.firebaseapp.com",
   databaseURL: "https://servigaco-default-rtdb.firebaseio.com",
   projectId: "servigaco",
   storageBucket: "servigaco.firebasestorage.app",
@@ -415,7 +415,6 @@ function actualizarCotizacion() {
   if (footerTabla) footerTabla.style.display = 'table-footer-group';
 
   const subtotal = cotizacion.reduce((sum, item) => sum + item.precio, 0);
-  // MODIFICADO: Usar un checkbox simple para ITBIS en lugar de un dropdown complejo.
   const aplicarItbis = document.getElementById('checkAplicarItbis')?.checked || false;
 
   let impuesto = 0;
@@ -495,9 +494,8 @@ function agregarImpresion() {
   
   let precio;
   
-  // ✅ CORRECCIÓN: Precio manual es POR PÁGINA
   if (manual) {
-    precio = manual * cant; // Precio manual × cantidad de páginas
+    precio = manual * cant;
   } else {
     precio = calcularPrecioImpresion(cant, tipo, tamano);
     
@@ -520,15 +518,7 @@ function agregarImpresion() {
   limpiarFormulario('formImpresion');
 }
 
-
-
-// ============================================
-// 📘 FUNCIÓN MEJORADA: LIBRO COMPLETO
-// Permite especificar páginas B/N, Color y Full Color por separado
-// ============================================
-
 function agregarLibro() {
-  // Obtener valores de los campos
   const paginasBN = parseInt(document.getElementById('libroPaginasBN')?.value || 0);
   const paginasColor = parseInt(document.getElementById('libroPaginasColor')?.value || 0);
   const paginasFullColor = parseInt(document.getElementById('libroPaginasFullColor')?.value || 0);
@@ -536,7 +526,6 @@ function agregarLibro() {
   const tipoTerminacion = document.getElementById('libroTerminacion')?.value || 'ninguna';
   const juegos = parseInt(document.getElementById('libroJuegos')?.value || 1);
 
-  // Validaciones
   const totalPaginas = paginasBN + paginasColor + paginasFullColor;
   
   if (totalPaginas === 0) {
@@ -549,44 +538,34 @@ function agregarLibro() {
     return;
   }
 
-  // Validar tapa blanda solo para carta
   if (tipoTerminacion === 'tapa_blanda' && tamano !== 'carta') {
     mostrarNotificacion('Tapa blanda solo disponible para carta', 'error');
     return;
   }
 
-  // ===============================================
-  // CALCULAR COSTOS POR SEPARADO
-  // ===============================================
-  
   let costoBN = 0;
   let costoColor = 0;
   let costoFullColor = 0;
   let costoTerminacion = 0;
 
-  // 1. Calcular costo de impresión B/N
-  // NOTA: Calculamos en base al VOLUMEN TOTAL (páginas * juegos) para aplicar el precio correcto de mayoreo
   if (paginasBN > 0) {
     const totalPaginasBN = paginasBN * juegos;
     const precioTotalBN = calcularPrecioImpresion(totalPaginasBN, 'bn', tamano);
-    costoBN = precioTotalBN / juegos; // Precio por libro individual
+    costoBN = precioTotalBN / juegos;
   }
 
-  // 2. Calcular costo de impresión Color
   if (paginasColor > 0) {
     const totalPaginasColor = paginasColor * juegos;
     const precioTotalColor = calcularPrecioImpresion(totalPaginasColor, 'color', tamano);
     costoColor = precioTotalColor / juegos;
   }
 
-  // 3. Calcular costo de impresión Full Color
   if (paginasFullColor > 0) {
     const totalPaginasFull = paginasFullColor * juegos;
     const precioTotalFull = calcularPrecioImpresion(totalPaginasFull, 'full_color', tamano);
     costoFullColor = precioTotalFull / juegos;
   }
 
-  // 4. Calcular costo de terminación (si aplica)
   if (tipoTerminacion === 'espiral') {
     costoTerminacion = calcularPrecioEncuadernado(totalPaginas);
   } else if (tipoTerminacion === 'tapa_dura') {
@@ -595,16 +574,9 @@ function agregarLibro() {
     costoTerminacion = calcularPrecioEmpastado('Tapa Blanda', tamano);
   }
 
-  // 5. Costo total por libro individual
   const costoPorLibro = costoBN + costoColor + costoFullColor + costoTerminacion;
-
-  // 6. Costo total (multiplicado por cantidad de juegos)
   const costoTotal = costoPorLibro * juegos;
 
-  // ===============================================
-  // CONSTRUIR DESCRIPCIÓN DETALLADA
-  // ===============================================
-  
   const tamanos = {
     carta: '8½ x 11',
     legal: '8½ x 14',
@@ -618,10 +590,8 @@ function agregarLibro() {
     'ninguna': 'Sin terminación'
   };
 
-  // Construir descripción detallada
   let descripcion = `${juegos} libro(s) · ${totalPaginas} páginas totales · ${tamanos[tamano]}`;
   
-  // Desglose de páginas
   let desglosePaginas = [];
   if (paginasBN > 0) desglosePaginas.push(`${paginasBN} B/N`);
   if (paginasColor > 0) desglosePaginas.push(`${paginasColor} Color`);
@@ -633,7 +603,6 @@ function agregarLibro() {
   
   descripcion += `\n${terminacionTexto[tipoTerminacion]}`;
 
-  // Desglose de costos (opcional, para transparencia)
   let desgloseCostos = [];
   if (costoBN > 0) desgloseCostos.push(`B/N: RD$${costoBN.toFixed(2)}`);
   if (costoColor > 0) desgloseCostos.push(`Color: RD$${costoColor.toFixed(2)}`);
@@ -646,10 +615,6 @@ function agregarLibro() {
     descripcion += `\nCosto unitario: RD$${costoPorLibro.toFixed(2)}`;
   }
 
-  // ===============================================
-  // AGREGAR A COTIZACIÓN
-  // ===============================================
-  
   agregarACotizacion({
     nombre: '📘 Libro Completo',
     descripcion: descripcion,
@@ -658,10 +623,8 @@ function agregarLibro() {
     precio: costoTotal
   });
 
-  // Limpiar formulario
   limpiarFormulario('formLibro');
   
-  // Ocultar resumen
   const resumenDiv = document.getElementById('resumenLibro');
   if (resumenDiv) resumenDiv.style.display = 'none';
 }
@@ -674,16 +637,14 @@ function agregarEncuadernado() {
   if (!pag || pag <= 0) { mostrarNotificacion('Páginas inválidas', 'error'); return; }
   if (!cant || cant <= 0) { mostrarNotificacion('Cantidad inválida', 'error'); return; }
 
-  // Validar límite máximo
   if (pag > 1000 && !manual) {
     mostrarNotificacion('Límite de 1000 páginas. Use precio personalizado.', 'warning');
     return;
   }
 
-  // ✅ CORRECCIÓN: Precio manual es POR UNIDAD
   let precioUnitario;
   if (manual) {
-    precioUnitario = manual; // Precio manual es por encuadernado
+    precioUnitario = manual;
   } else {
     precioUnitario = calcularPrecioEncuadernado(pag);
   }
@@ -693,7 +654,7 @@ function agregarEncuadernado() {
     return;
   }
   
-  const precioTotal = precioUnitario * cant; // ✅ SIEMPRE multiplica
+  const precioTotal = precioUnitario * cant;
 
   agregarACotizacion({ 
     nombre: 'Encuadernado Espiral', 
@@ -716,16 +677,14 @@ function agregarEmpastado() {
   const tipoMap = { tapa_dura: 'Tapa Dura', tapa_blanda: 'Tapa Blanda' };
   const tipo = tipoMap[tipoRaw];
   
-  // Validar tapa blanda solo para carta
   if (tipoRaw === 'tapa_blanda' && tam !== 'carta') {
     mostrarNotificacion('Tapa blanda solo para carta. Use personalizado.', 'warning');
     return;
   }
   
-  // ✅ CORRECCIÓN: Precio manual es POR UNIDAD
   let precioUnitario;
   if (manual) {
-    precioUnitario = manual; // Precio manual es por empastado
+    precioUnitario = manual;
   } else {
     precioUnitario = calcularPrecioEmpastado(tipo, tam);
   }
@@ -735,7 +694,7 @@ function agregarEmpastado() {
     return;
   }
   
-  const precioTotal = precioUnitario * cant; // ✅ SIEMPRE multiplica
+  const precioTotal = precioUnitario * cant;
   const tamanoTexto = tam === 'carta' ? '8.5x11' : tam === 'legal' ? '8.5x14' : '11x17';
 
   agregarACotizacion({ 
@@ -764,9 +723,8 @@ function agregarPloteo() {
   let precioUnitario;
   let desc;
   
-  // ✅ CORRECCIÓN: Precio manual es POR UNIDAD
   if (manual) {
-    precio = manual * cant; // Precio manual × cantidad (total)
+    precio = manual * cant;
     precioUnitario = manual;
   } else if (tipoTam === 'personalizado') {
     precio = calcularPrecioPloteo(tipoPloteo, 'custom', cant, ancho, alto);
@@ -822,20 +780,25 @@ function agregarPlastificado() {
     `${cant * piezas} piezas plastificadas y cortadas (${cant} hojas ${tamanoTexto[tam]}, ${piezas} piezas/hoja)` :
     `${cant} hoja(s) plastificadas ${tamanoTexto[tam]}`;
   
-  // ✅ CORRECCIÓN: Precio manual es POR HOJA/PIEZA
   let precioTotal;
   if (manual) {
     if (corte) {
       const totalPiezas = cant * piezas;
-      precioTotal = manual * totalPiezas; // Precio manual × piezas
+      precioTotal = manual * totalPiezas;
     } else {
-      precioTotal = manual * cant; // Precio manual × hojas
+      precioTotal = manual * cant;
     }
   } else {
     precioTotal = calcularPrecioPlastificado(tam, corte, cant, piezas);
   }
 
-  agregarACotizacion({ nombre: 'Plastificado', descripcion: desc, cantidad: corte ? cant * piezas : cant, precioUnitario: llevaCorte ? precioTotal / (cant * piezas) : precioTotal / cant, precio: precioTotal });
+  agregarACotizacion({ 
+    nombre: 'Plastificado', 
+    descripcion: desc, 
+    cantidad: corte ? cant * piezas : cant, 
+    precioUnitario: corte ? precioTotal / (cant * piezas) : precioTotal / cant, 
+    precio: precioTotal 
+  });
   limpiarFormulario('formPlastificado');
 }
 
@@ -907,14 +870,12 @@ function generarCotizacion() {
 
   txt += `\nTOTAL: RD$${(subtotal + imp).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
   
-  // Guardar registro en Firebase
   registrarLogVenta({
     tipo: 'General',
     total: (subtotal + imp).toFixed(2),
     detalle: cotizacion.map(i => `• ${i.cantidad}x ${i.nombre} - RD$${i.precio.toFixed(2)}`).join('\n')
   });
 
-  // En lugar de alert, copiamos al portapapeles o usamos la notificación
   mostrarNotificacion('Resumen generado (ver PDF para detalle)', 'success');
 }
 
@@ -928,29 +889,21 @@ function exportarParaSistemaViejo() {
     return;
   }
 
-  // 1. Definir el formato. La mayoría de sistemas viejos aceptan CSV (valores separados por comas)
-  // Formato genérico: CODIGO, CANTIDAD, DESCRIPCION, PRECIO_UNITARIO, TOTAL
   let csvContent = "data:text/csv;charset=utf-8,";
-  
-  // Encabezados (Opcional: algunos sistemas viejos no quieren encabezados, puedes comentar esta línea)
   csvContent += "Codigo,Cantidad,Descripcion,PrecioUnitario,Total\r\n";
 
   cotizacion.forEach((item, index) => {
-    // Limpiamos la descripción para quitar comas o saltos de línea que rompan el CSV
     const descripcionLimpia = item.descripcion.replace(/(\r\n|\n|\r)/gm, " ").replace(/,/g, " ");
-    const codigo = `SERV-${index + 1}`; // Generamos un código genérico
-    
-    // Construimos la línea
+    const codigo = `SERV-${index + 1}`;
     const row = `${codigo},${item.cantidad},"${item.nombre} - ${descripcionLimpia}",${item.precioUnitario.toFixed(2)},${item.precio.toFixed(2)}`;
     csvContent += row + "\r\n";
   });
 
-  // 2. Crear enlace de descarga invisible
   const encodedUri = encodeURI(csvContent);
   const link = document.createElement("a");
   link.setAttribute("href", encodedUri);
   link.setAttribute("download", `importacion_factura_${new Date().getTime()}.csv`);
-  document.body.appendChild(link); // Requerido para Firefox
+  document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
   
@@ -962,7 +915,6 @@ function exportarParaSistemaViejo() {
 // ============================================
 
 function marcarPaginaActiva() {
-  // La navegación ahora se maneja principalmente en components.js
   document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
 }
 
@@ -1033,14 +985,13 @@ function inicializarEventListeners() {
     });
   }
 
-  // MODIFICADO: Escuchar el nuevo checkbox de ITBIS en lugar del dropdown
   const checkItbis = document.getElementById('checkAplicarItbis');
   if (checkItbis) checkItbis.addEventListener('change', actualizarCotizacion);
 
   const btnLimp = document.getElementById('btnLimpiarCotizacion');
   if (btnLimp) btnLimp.addEventListener('click', limpiarCotizacion);
 
-  const btnGen = document.getElementById('btnGenerarCotizacion'); // Botón pequeño
+  const btnGen = document.getElementById('btnGenerarCotizacion');
   if (btnGen) btnGen.addEventListener('click', generarCotizacion);
 
   const btnWsp = document.getElementById('btnWhatsapp');
@@ -1065,7 +1016,7 @@ function inicializarEventListeners() {
     }
   });
 
-  // --- NUEVOS EVENT LISTENERS PARA GESTIÓN DE COTIZACIONES ---
+  // --- GESTIÓN DE COTIZACIONES ---
   const btnGuardar = document.getElementById('btnGuardarCotizacion');
   if (btnGuardar) btnGuardar.addEventListener('click', guardarCotizacionActual);
 
@@ -1078,7 +1029,6 @@ function inicializarEventListeners() {
   const btnCerrarModal = document.getElementById('btnCerrarModal');
   if (btnCerrarModal) btnCerrarModal.addEventListener('click', cerrarModalCotizaciones);
 
-  // Cerrar modal con ESC
   document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && !document.getElementById('modalCotizacionesGuardadas')?.classList.contains('hidden')) {
           cerrarModalCotizaciones();
@@ -1089,7 +1039,6 @@ function inicializarEventListeners() {
       }
   });
 
-  // Cerrar modal al hacer click fuera del contenido
   const modal = document.getElementById('modalCotizacionesGuardadas');
   if (modal) {
     modal.addEventListener('click', (e) => {
@@ -1121,17 +1070,15 @@ function inicializarEventListeners() {
   
   document.getElementById('btnCerrarFacturaX')?.addEventListener('click', () => document.getElementById('modalFacturacion').classList.add('hidden'));
 
-  // Actualizar preview de secuencia al cambiar tipo
   const selectNCF = document.getElementById('facturaTipoNCF');
   if (selectNCF) selectNCF.addEventListener('change', actualizarPreviewNCF);
   
-  // Evento de búsqueda en tiempo real
   const inputRNC = document.getElementById('facturaClienteRNC');
   if (inputRNC) {
     inputRNC.addEventListener('input', manejarBusquedaCliente);
   }
 
-  // --- EVENTOS HISTORIAL FACTURAS ---
+  // --- HISTORIAL FACTURAS ---
   const btnVerFacturas = document.getElementById('btnVerFacturas');
   if (btnVerFacturas) btnVerFacturas.addEventListener('click', abrirModalFacturas);
 
@@ -1156,7 +1103,7 @@ function inicializarEventListeners() {
   const btnIT1Excel = document.getElementById('btnReporteIT1Excel');
   if (btnIT1Excel) btnIT1Excel.addEventListener('click', generarReporteIT1);
 
-  // --- EVENTOS MODAL ANULACIÓN SEGURA ---
+  // --- MODAL ANULACIÓN SEGURA ---
   const btnEjecutarAnulacion = document.getElementById('btnEjecutarAnulacion');
   if (btnEjecutarAnulacion) btnEjecutarAnulacion.addEventListener('click', procesarAnulacion);
 
@@ -1170,10 +1117,8 @@ function inicializarEventListeners() {
   if (inputAnulacion) {
     inputAnulacion.addEventListener('input', (e) => {
       const btn = document.getElementById('btnEjecutarAnulacion');
-      // Habilitar botón solo si escribe "anular" (sin importar mayúsculas/minúsculas)
       if (btn) btn.disabled = e.target.value.toLowerCase() !== 'anular';
     });
-    // Permitir confirmar con Enter
     inputAnulacion.addEventListener('keyup', (e) => {
       if (e.key === 'Enter' && e.target.value.toLowerCase() === 'anular') {
         procesarAnulacion();
@@ -1181,7 +1126,7 @@ function inicializarEventListeners() {
     });
   }
 
-  // --- EVENTOS MODAL LIMPIAR ---
+  // --- MODAL LIMPIAR ---
   const btnEjecutarLimpiar = document.getElementById('btnEjecutarLimpiar');
   if (btnEjecutarLimpiar) btnEjecutarLimpiar.addEventListener('click', ejecutarLimpiarCotizacion);
 
@@ -1190,7 +1135,7 @@ function inicializarEventListeners() {
     document.getElementById('modalConfirmarLimpiar').classList.add('hidden');
   });
 
-  // --- EVENTOS MODAL ELIMINAR COTIZACIÓN ---
+  // --- MODAL ELIMINAR COTIZACIÓN ---
   const btnConfirmarEliminar = document.getElementById('btnConfirmarEliminar');
   if (btnConfirmarEliminar) btnConfirmarEliminar.addEventListener('click', ejecutarEliminacionCotizacion);
 
@@ -1200,7 +1145,7 @@ function inicializarEventListeners() {
     idCotizacionAEliminar = null;
   });
 
-  // --- EVENTOS MODAL NCF ---
+  // --- MODAL NCF ---
   const btnConfigNCF = document.getElementById('btnConfigurarNCF');
   if (btnConfigNCF) btnConfigNCF.addEventListener('click', abrirModalNCF);
 
@@ -1213,7 +1158,6 @@ function inicializarEventListeners() {
   const formNCF = document.getElementById('formNCF');
   if (formNCF) formNCF.addEventListener('submit', guardarConfiguracionNCF);
 
-  // Actualizar prefijos visuales en el modal de configuración NCF
   const ncfTipoConfig = document.getElementById('ncfTipoConfig');
   if (ncfTipoConfig) {
       ncfTipoConfig.addEventListener('change', (e) => {
@@ -1268,7 +1212,7 @@ function actualizarResumenLibro() {
 }
 
 // ============================================
-// � CÁLCULO DE PRECIOS EN TIEMPO REAL
+// 💲 CÁLCULO DE PRECIOS EN TIEMPO REAL
 // ============================================
 
 function calcularPrecioImpresionTiempoReal() {
@@ -1426,7 +1370,6 @@ function calcularPrecioPersonalizadoTiempoReal() {
 // ============================================
 
 function inicializarPrecioTiempoReal() {
-  // Impresión
   const camposImpresion = ['cantidadPaginas', 'tipoImpresion', 'tamanoImpresion'];
   camposImpresion.forEach(id => {
     const elemento = document.getElementById(id);
@@ -1436,7 +1379,6 @@ function inicializarPrecioTiempoReal() {
     }
   });
 
-  // Encuadernado
   const camposEncuadernado = ['paginasEncuadernado', 'cantidadEncuadernado'];
   camposEncuadernado.forEach(id => {
     const elemento = document.getElementById(id);
@@ -1446,7 +1388,6 @@ function inicializarPrecioTiempoReal() {
     }
   });
 
-  // Empastado
   const camposEmpastado = ['tipoEmpastadoGeneral', 'tamanoEmpastado', 'cantidadEmpastado'];
   camposEmpastado.forEach(id => {
     const elemento = document.getElementById(id);
@@ -1456,7 +1397,6 @@ function inicializarPrecioTiempoReal() {
     }
   });
 
-  // Ploteo
   const camposPloteo = ['tipoPloteo', 'opcionTamanoPloteo', 'tamanoPloteo', 'cantidadPloteo', 'anchoPloteo', 'altoPloteo'];
   camposPloteo.forEach(id => {
     const elemento = document.getElementById(id);
@@ -1466,7 +1406,6 @@ function inicializarPrecioTiempoReal() {
     }
   });
 
-  // Plastificado
   const camposPlastificado = ['tamanoPlastificado', 'llevaCorte', 'cantidadPlastificado', 'cantidadPiezas'];
   camposPlastificado.forEach(id => {
     const elemento = document.getElementById(id);
@@ -1476,7 +1415,6 @@ function inicializarPrecioTiempoReal() {
     }
   });
 
-  // Personalizado
   const camposPersonalizado = ['cantPersonalizado', 'precioPersonalizado'];
   camposPersonalizado.forEach(id => {
     const elemento = document.getElementById(id);
@@ -1488,7 +1426,7 @@ function inicializarPrecioTiempoReal() {
 }
 
 // ============================================
-// 🖨️ IMPRIMIR COTIZACIÓN (vista para imprimir)
+// 🖨️ IMPRIMIR COTIZACIÓN
 // ============================================
 
 async function imprimirCotizacion(e) {
@@ -1496,7 +1434,6 @@ async function imprimirCotizacion(e) {
 
   if (cotizacion.length === 0) { mostrarNotificacion('Cotización vacía', 'warning'); return; }
 
-  // UX: Deshabilitar botón para evitar doble clic
   const btn = document.getElementById('generarPDF');
   const originalText = btn ? btn.innerHTML : '';
   if (btn) {
@@ -1506,7 +1443,6 @@ async function imprimirCotizacion(e) {
 
   mostrarNotificacion('📄 Generando PDF profesional...', 'info');
 
-  // 1. Preparar datos para el backend
   const aplicarItbis = document.getElementById('checkAplicarItbis')?.checked || false;
   const fecha = new Date().toLocaleDateString('es-DO');
   const subtotal = cotizacion.reduce((s, i) => s + i.precio, 0);
@@ -1523,7 +1459,7 @@ async function imprimirCotizacion(e) {
   const total = subtotal + totalImpuesto;
 
   const datosFactura = {
-    id: idCotizacionActiva, // Enviar ID si es una cotización guardada
+    id: idCotizacionActiva,
     ncf: 'COTIZACIÓN',
     fecha: fecha,
     tituloDocumento: 'COTIZACIÓN DE SERVICIOS',
@@ -1555,11 +1491,6 @@ async function imprimirCotizacion(e) {
     }
 
     const blob = await response.blob();
-    
-    if (blob.size < 100) {
-        console.warn("⚠️ ALERTA: El archivo recibido es muy pequeño (" + blob.size + " bytes). Podría estar dañado o ser un mensaje de error.");
-    }
-
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -1592,7 +1523,6 @@ async function imprimirCotizacion(e) {
 
 function guardarEnLocalStorage() {
   localStorage.setItem('cotizacion_servigaco', JSON.stringify(cotizacion));
-  // Guardamos también el ID para no perder la referencia si se recarga la página
   if (idCotizacionActiva) localStorage.setItem('cotizacion_servigaco_id', idCotizacionActiva);
   if (nombreCotizacionActiva) localStorage.setItem('cotizacion_servigaco_nombre', nombreCotizacionActiva);
 }
@@ -1607,7 +1537,6 @@ function cargarDeLocalStorage() {
       console.error('Error cargando cotización guardada', e);
     }
   }
-  // Recuperar el ID si existe
   const idGuardado = localStorage.getItem('cotizacion_servigaco_id');
   if (idGuardado) {
     idCotizacionActiva = idGuardado;
@@ -1623,49 +1552,38 @@ function cargarDeLocalStorage() {
 // ☁️ GESTIÓN CON FIREBASE REALTIME DATABASE
 // ============================================
 
-async function guardarCotizacionActual() { // ESTA FUNCIÓN AHORA SOLO CREA NUEVAS
-  // 1. Validar que haya items
+async function guardarCotizacionActual() {
   if (cotizacion.length === 0) {
     mostrarNotificacion("⚠️ La cotización está vacía. Agrega servicios primero.", "warning");
     return;
   }
 
-  // 2. Usar el nombre activo o uno por defecto (SIN PREGUNTAR NADA)
   const nombre = nombreCotizacionActiva || "Cliente General";
-
-  // 3. Calcular Totales
   const subtotal = cotizacion.reduce((sum, item) => sum + item.precio, 0);
   const aplicarItbis = document.getElementById('checkAplicarItbis')?.checked || false;
   let impuesto = 0;
   if (aplicarItbis) impuesto = subtotal * 0.18;
   const total = subtotal + impuesto;
 
-  // 4. Generar Descripción Detallada (SOLUCIÓN "NO LOS DETALLES")
-  // Crea un texto como: "50x Impresión B/N, 2x Encuadernado Espiral"
   const detallesTexto = cotizacion.map(item => `${item.cantidad}x ${item.nombre}`).join(', ');
   const descripcionFinal = detallesTexto.length > 100 ? detallesTexto.substring(0, 97) + '...' : detallesTexto;
 
-  // 5. Construir Objeto
   const paqueteDeDatos = {
     fecha: new Date().toISOString(),
     timestamp: firebase.database.ServerValue.TIMESTAMP,
     tipo: "General",
     nombre: nombre,
     total: total.toFixed(2),
-    descripcion: descripcionFinal, // Ahora guarda los detalles reales
+    descripcion: descripcionFinal,
     items: cotizacion
   };
 
-  console.log("💾 [BORRADOR] Guardando cotización en Firebase (Esto NO consume NCF):", paqueteDeDatos);
-
-  // 6. Enviar
   try {
-    // CREAMOS un registro nuevo siempre
     const newRef = await db.ref("cotizaciones").push(paqueteDeDatos);
-    idCotizacionActiva = newRef.key; // Pasamos a modo edición de la nueva cotización
+    idCotizacionActiva = newRef.key;
     nombreCotizacionActiva = nombre;
-    guardarEnLocalStorage(); // Guardamos el nuevo ID inmediatamente
-    actualizarCotizacion(); // Actualiza la UI (esto ocultará "Guardar" y mostrará "Guardar Cambios")
+    guardarEnLocalStorage();
+    actualizarCotizacion();
     mostrarNotificacion(`✅ Cotización guardada`, "success");
   } catch (error) {
     console.error("❌ Error:", error);
@@ -1673,7 +1591,7 @@ async function guardarCotizacionActual() { // ESTA FUNCIÓN AHORA SOLO CREA NUEV
   }
 }
 
-async function guardarCambiosCotizacion() { // NUEVA FUNCIÓN SOLO PARA EDITAR
+async function guardarCambiosCotizacion() {
   if (!idCotizacionActiva) {
     mostrarNotificacion("⚠️ No hay una cotización activa para editar.", "error");
     return;
@@ -1690,8 +1608,7 @@ async function guardarCambiosCotizacion() { // NUEVA FUNCIÓN SOLO PARA EDITAR
   const descripcionFinal = detallesTexto.length > 100 ? detallesTexto.substring(0, 97) + '...' : detallesTexto;
 
   const paqueteDeDatos = {
-    fecha: new Date().toISOString(), // Actualizamos fecha de modificación
-    // No sobrescribimos timestamp original si no queremos, o usamos uno de 'updatedAt'
+    fecha: new Date().toISOString(),
     tipo: "General",
     nombre: nombre,
     total: total.toFixed(2),
@@ -1708,11 +1625,6 @@ async function guardarCambiosCotizacion() { // NUEVA FUNCIÓN SOLO PARA EDITAR
   }
 }
 
-/**
- * Clona una cotización facturada para permitir su corrección y la generación de una nueva factura.
- * NO modifica la cotización original.
- * @param {string} id - El ID de la cotización a clonar.
- */
 function corregirFacturaDesdeCotizacion(id) {
   const cotizacionOriginal = todasLasCotizaciones.find(c => c.id === id);
   
@@ -1721,22 +1633,14 @@ function corregirFacturaDesdeCotizacion(id) {
     return;
   }
 
-  // 1. Clonar los items para evitar modificar el objeto original
-  // Usamos JSON.parse(JSON.stringify(...)) para una copia profunda y segura
   cotizacion = JSON.parse(JSON.stringify(cotizacionOriginal.items ? Object.values(cotizacionOriginal.items) : []));
-  
-  // 2. Resetear el estado de edición: estamos creando una NUEVA cotización
   idCotizacionActiva = null;
-  
-  // 3. Mantener el nombre del cliente
   nombreCotizacionActiva = cotizacionOriginal.nombre || "Cliente General";
   
-  // 4. Actualizar la UI con los datos clonados y cerrar el modal
   actualizarCotizacion();
   cerrarModalCotizaciones();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 
-  // 5. Mostrar una notificación clara sobre el próximo paso
   mostrarNotificacion('Cotización clonada. No olvides anular la factura original si es incorrecta.', 'warning');
 }
 
@@ -1745,7 +1649,6 @@ function cargarCotizacionGuardada(id) {
   if (cotizacionGuardada) {
     idCotizacionActiva = id;
     nombreCotizacionActiva = cotizacionGuardada.nombre || "Cliente General";
-    // Asegurar que items sea un array (Firebase puede devolver objeto si las claves son numéricas pero discontinuas, aunque push usa array)
     cotizacion = cotizacionGuardada.items ? Object.values(cotizacionGuardada.items) : [];
     actualizarCotizacion();
     cerrarModalCotizaciones();
@@ -1799,7 +1702,6 @@ function renderizarCotizacionesGuardadas() {
   }
 
   container.innerHTML = todasLasCotizaciones.map(c => {
-    // Manejo robusto de fechas (Firebase Timestamp o String ISO)
     let fechaObj = new Date();
     if (c.timestamp && c.timestamp.toDate) {
       fechaObj = c.timestamp.toDate();
@@ -1813,7 +1715,6 @@ function renderizarCotizacionesGuardadas() {
     const icono = '📄';
     const descripcion = `${c.items ? c.items.length : 0} servicio(s)`;
     
-    // Botón de facturar
     const btnFacturar = (!c.ncf) 
       ? `<button type="button" onclick="abrirModalFacturacion('${c.id}')" class="flex-1 md:flex-none min-w-[100px] py-2 px-3 rounded-lg font-semibold text-sm text-white bg-green-600 hover:bg-green-700 transition-all shadow-sm whitespace-nowrap">🧾 Facturar</button>`
       : (c.ncf ? `<span class="text-xs font-bold text-green-600 dark:text-green-400 border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/30 px-2 py-1 rounded whitespace-nowrap">✅ ${c.ncf}</span>` : '');
@@ -1846,7 +1747,6 @@ function renderizarCotizacionesGuardadas() {
 // ============================================
 
 function validarRNC(str) {
-  // Algoritmo oficial DGII (Módulo 10)
   str = str.replace(/-/g, '').trim();
   if (![9, 11].includes(str.length)) return false;
 
@@ -1854,10 +1754,8 @@ function validarRNC(str) {
   let multiplicadores;
 
   if (str.length === 9) {
-      // RNC Empresas
       multiplicadores = [7, 9, 8, 6, 5, 4, 3, 2];
   } else {
-      // Cédula Personas
       multiplicadores = [1, 2, 1, 2, 1, 2, 1, 2, 1, 2];
   }
 
@@ -1891,19 +1789,16 @@ function manejarBusquedaCliente(e) {
   const termino = e.target.value.trim();
   const lista = document.getElementById('listaResultadosClientes');
   
-  // Limpiar timer anterior
   clearTimeout(searchDebounceTimer);
 
-  // OPTIMIZACIÓN: Exigir más caracteres para texto (4) que para números (3)
   const esNumero = /^\d+$/.test(termino);
-  const minChars = esNumero ? 3 : 4; // Aumentado a 4 para texto para evitar congelamientos
+  const minChars = esNumero ? 3 : 4;
 
   if (termino.length < minChars) {
     lista.classList.add('hidden');
     return;
   }
 
-  // OPTIMIZACIÓN: Ajustado a 450ms para evitar que se congele al escribir rápido
   searchDebounceTimer = setTimeout(() => {
     ejecutarBusquedaFirebase(termino);
   }, 450);
@@ -1917,7 +1812,6 @@ function guardarEnCacheClientes(resultados) {
   try {
     let cache = JSON.parse(localStorage.getItem('clientes_offline_cache') || '{}');
     Object.assign(cache, resultados);
-    // Limitar a 500 recientes para no saturar la memoria
     const keys = Object.keys(cache);
     if (keys.length > 500) {
       const keysToKeep = keys.slice(keys.length - 500);
@@ -1950,7 +1844,6 @@ function buscarEnCacheLocal(termino) {
 
 async function ejecutarBusquedaFirebase(termino) {
   const lista = document.getElementById('listaResultadosClientes');
-  // MEJORA VISUAL: Spinner de carga animado
   lista.innerHTML = `
     <div class="p-6 flex flex-col items-center justify-center text-blue-600">
       <svg class="animate-spin h-8 w-8 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -1962,26 +1855,19 @@ async function ejecutarBusquedaFirebase(termino) {
   `;
   lista.classList.remove('hidden');
 
-  // 1. INTENTO OFFLINE INMEDIATO
   if (!navigator.onLine) {
     const resultadosLocal = buscarEnCacheLocal(termino);
     renderizarResultadosBusqueda(resultadosLocal, termino, true);
     return;
   }
 
-  const esNumero = /^\d+$/.test(termino);
-  let query;
-
   try {
-    // 🔄 MIGRACIÓN A BACKEND: Usamos fetch en lugar de db.ref directo
-    // Esto protege la base de datos y reduce el tráfico en el cliente
     const response = await fetch(`${API_BASE_URL}/api/rnc/${encodeURIComponent(termino)}`);
     
     if (!response.ok) throw new Error('Error en el servidor');
     
     const resultados = await response.json();
 
-    // 2. GUARDAR EN CACHÉ SI HAY ÉXITO
     if (resultados && Object.keys(resultados).length > 0) {
       guardarEnCacheClientes(resultados);
     }
@@ -1990,7 +1876,6 @@ async function ejecutarBusquedaFirebase(termino) {
 
   } catch (error) {
     console.error("Error búsqueda:", error);
-    // 3. FALLBACK A CACHÉ SI FALLA LA RED
     const resultadosLocal = buscarEnCacheLocal(termino);
     if (resultadosLocal) {
       renderizarResultadosBusqueda(resultadosLocal, termino, true);
@@ -2025,38 +1910,30 @@ function renderizarResultadosBusqueda(resultados, termino, esOffline) {
   lista.innerHTML = html;
 }
 
-// Función global para el onclick del HTML generado
 window.seleccionarClienteBusqueda = function(rnc, nombre) {
   document.getElementById('facturaClienteRNC').value = rnc;
   document.getElementById('facturaClienteNombre').value = nombre;
   document.getElementById('listaResultadosClientes').classList.add('hidden');
   
-  // Validar RNC visualmente
   const infoLabel = document.getElementById('infoClienteRNC');
   infoLabel.textContent = '✅ Cliente seleccionado';
   infoLabel.classList.remove('hidden');
   
-  // Auto-seleccionar tipo NCF
   const selectNCF = document.getElementById('facturaTipoNCF');
   const rncLimpio = rnc.replace(/-/g, '');
 
   if (rncLimpio.length === 11) {
-    // Persona Física (Cédula) -> Consumidor Final
     selectNCF.value = 'B02';
   } else if (rncLimpio.length === 9) {
     if (rncLimpio.startsWith('4')) {
-      // Entidad Gubernamental
       selectNCF.value = 'B15';
     } else {
-      // Empresa -> Crédito Fiscal
       selectNCF.value = 'B01';
     }
   } else {
-    // Default o caso no reconocido, asumimos consumidor final
     selectNCF.value = 'B02';
   }
 
-  // Actualizar el preview del NCF que se va a generar
   actualizarPreviewNCF();
 };
 
@@ -2074,37 +1951,30 @@ async function buscarClientePorRNC() {
     return;
   }
 
-  // --- LÓGICA DE AUTO-SELECCIÓN DE NCF ---
   if (rnc.length === 11) {
-    selectNCF.value = 'B02'; // Persona
+    selectNCF.value = 'B02';
   } else if (rnc.length === 9) {
     if (rnc.startsWith('4')) {
-      selectNCF.value = 'B15'; // Gobierno
+      selectNCF.value = 'B15';
     } else {
-      selectNCF.value = 'B01'; // Empresa
+      selectNCF.value = 'B01';
     }
   }
-  // Actualizar preview inmediatamente
   actualizarPreviewNCF();
-  // ------------------------------------
 
   mostrarNotificacion('Buscando en base de datos...', 'info');
 
   try {
-    // 🔄 MIGRACIÓN A BACKEND: Consulta directa por API
     const response = await fetch(`${API_BASE_URL}/api/rnc/${rnc}`);
     const resultados = await response.json();
     const datos = resultados ? resultados[rnc] : null;
 
     if (datos) {
-      nombreInput.value = datos.n || datos.nombre; // 'n' si usaste el script optimizado
+      nombreInput.value = datos.n || datos.nombre;
       infoLabel.textContent = '✅ Cliente encontrado en DGII';
       infoLabel.classList.remove('hidden');
-      
-      // La sugerencia de NCF ya se hizo arriba, no es necesario repetirla.
     } else {
       mostrarNotificacion('RNC válido pero no registrado en local. Ingrese nombre manual.', 'warning');
-      // MODIFICADO: Botón para guardar cliente nuevo
       infoLabel.innerHTML = `
         <span class="text-yellow-600 font-bold">⚠️ Nuevo Cliente</span>
         <button onclick="guardarNuevoCliente()" type="button" class="ml-3 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded border border-blue-200 transition-colors font-bold shadow-sm">
@@ -2139,7 +2009,6 @@ async function guardarNuevoCliente() {
     return;
   }
 
-  // Feedback visual
   const btn = infoLabel.querySelector('button');
   if(btn) {
       btn.disabled = true;
@@ -2147,7 +2016,6 @@ async function guardarNuevoCliente() {
   }
 
   try {
-    // Normalizar nombre para búsqueda (igual que en upload_rnc.js)
     const nombreNormalizado = nombre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
     
     await db.ref('maestro_contribuyentes/' + rnc).set({
@@ -2158,7 +2026,6 @@ async function guardarNuevoCliente() {
     mostrarNotificacion('✅ Cliente agregado a la base de datos', 'success');
     infoLabel.innerHTML = '<span class="text-green-600 font-bold">✅ Cliente registrado exitosamente</span>';
     
-    // Auto-seleccionar tipo NCF si no estaba seleccionado
     const selectNCF = document.getElementById('facturaTipoNCF');
     if (selectNCF && !selectNCF.value) {
         if (rnc.length === 9) selectNCF.value = 'B01';
@@ -2189,28 +2056,25 @@ async function actualizarPreviewNCF() {
   label.textContent = '🔄 Verificando secuencia...';
   label.className = 'text-xs font-bold mt-2 text-right text-gray-500';
   
-  // Bloquear botón mientras verifica
   if (btnConfirmar) {
       btnConfirmar.disabled = true;
       btnConfirmar.classList.add('opacity-50', 'cursor-not-allowed');
   }
 
   try {
-    // Consultar configuración completa para validar límites y alertas
     const snap = await db.ref(`secuencias_ncf/${tipo}`).once('value');
     const data = snap.val();
 
     if (!data) {
         label.textContent = '⚠️ TIPO NO CONFIGURADO';
         label.className = 'text-xs font-bold mt-2 text-right text-red-500 animate-pulse';
-        return; // Se queda deshabilitado
+        return;
     }
 
     const actual = parseInt(data.actual || 0, 10);
     const desde = parseInt(data.desde || 1, 10);
     const hasta = parseInt(data.hasta || 0, 10);
 
-    // Ajuste para respetar el rango 'desde' si actual es menor
     const effectiveActual = (actual < desde - 1) ? (desde - 1) : actual;
     const disponibles = hasta - effectiveActual;
     const siguiente = effectiveActual + 1;
@@ -2220,7 +2084,6 @@ async function actualizarPreviewNCF() {
     if (disponibles <= 0) {
         label.textContent = `⛔ AGOTADO (Límite: ${hasta})`;
         label.className = 'text-xs font-bold mt-2 text-right text-red-600 font-black';
-        // Se queda deshabilitado
     } else {
         if (disponibles <= 10) {
             label.textContent = `⚠️ Quedan ${disponibles} - Próximo: ${ncfPreview}`;
@@ -2230,7 +2093,6 @@ async function actualizarPreviewNCF() {
             label.className = 'text-xs font-bold mt-2 text-right text-blue-600';
         }
         
-        // Habilitar botón si hay disponibles
         if (btnConfirmar) {
             btnConfirmar.disabled = false;
             btnConfirmar.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -2244,59 +2106,67 @@ async function actualizarPreviewNCF() {
   }
 }
 
+// ============================================
+// ✅ FIX PRINCIPAL: abrirModalFacturacion
+// Normaliza items de Firebase (objeto → array) antes de todo
+// ============================================
 function abrirModalFacturacion(idCotizacion) {
-  // 🛡️ VERIFICACIÓN DE SEGURIDAD
   if (!verificarPermisoAdmin()) return;
 
-  // Clonar cotización para no modificar la original hasta guardar
   const cotOriginal = todasLasCotizaciones.find(c => c.id === idCotizacion);
   if (!cotOriginal) return;
-  
+
+  // Clonar cotización profundamente
   cotizacionAFacturar = JSON.parse(JSON.stringify(cotOriginal));
 
-  // Pre-llenar datos
+  // ✅ FIX: Firebase guarda arrays como objetos con claves numéricas.
+  // Siempre normalizar a array real antes de continuar.
+  if (cotizacionAFacturar.items && !Array.isArray(cotizacionAFacturar.items)) {
+    cotizacionAFacturar.items = Object.values(cotizacionAFacturar.items);
+  }
+  if (!cotizacionAFacturar.items) {
+    cotizacionAFacturar.items = [];
+  }
+
+  // Pre-llenar datos del modal
   document.getElementById('facturaClienteNombre').value = cotizacionAFacturar.nombre;
   document.getElementById('facturaClienteRNC').value = '';
   document.getElementById('facturaFecha').valueAsDate = new Date();
-  document.getElementById('facturaAbono').value = ''; // Limpiar abono
-  
+  document.getElementById('facturaAbono').value = '';
+
   document.getElementById('infoClienteRNC').classList.add('hidden');
-  document.getElementById('listaResultadosClientes').classList.add('hidden'); // Ocultar lista si estaba abierta
-  
-  // Renderizar items en la tabla del modal
+  document.getElementById('listaResultadosClientes').classList.add('hidden');
+
   renderizarItemsFacturaModal();
-  
-  // Mostrar modal
   document.getElementById('modalFacturacion').classList.remove('hidden');
-  cerrarModalCotizaciones(); // Cerrar el de lista
-  actualizarPreviewNCF(); // Cargar secuencia inicial
-  
-  // Listeners internos del modal
+  cerrarModalCotizaciones();
+  actualizarPreviewNCF();
+
   document.getElementById('facturaTipoNCF').addEventListener('change', () => {
-      actualizarPreviewNCF();
-      recalcularTotalesFacturaModal();
+    actualizarPreviewNCF();
+    recalcularTotalesFacturaModal();
   });
-  
+
   document.querySelectorAll('input[name="facturaCondicionVenta"]').forEach(r => {
-      r.addEventListener('change', (e) => {
-          const div = document.getElementById('divFacturaVencimiento');
-          const val = e.target.value;
-          if(val.startsWith('credito')) {
-              div.classList.remove('hidden');
-              const dias = val === 'credito_15' ? 15 : 30;
-              const d = new Date();
-              d.setDate(d.getDate() + dias);
-              document.getElementById('facturaVencimiento').valueAsDate = d;
-          } else {
-              div.classList.add('hidden');
-          }
-      });
+    r.addEventListener('change', (e) => {
+      const div = document.getElementById('divFacturaVencimiento');
+      const val = e.target.value;
+      if (val.startsWith('credito')) {
+        div.classList.remove('hidden');
+        const dias = val === 'credito_15' ? 15 : 30;
+        const d = new Date();
+        d.setDate(d.getDate() + dias);
+        document.getElementById('facturaVencimiento').valueAsDate = d;
+      } else {
+        div.classList.add('hidden');
+      }
+    });
   });
 
   document.getElementById('facturaMetodoPago').addEventListener('change', (e) => {
-      const ref = document.getElementById('facturaReferencia');
-      if(e.target.value !== 'efectivo') ref.classList.remove('hidden');
-      else ref.classList.add('hidden');
+    const ref = document.getElementById('facturaReferencia');
+    if (e.target.value !== 'efectivo') ref.classList.remove('hidden');
+    else ref.classList.add('hidden');
   });
 }
 
@@ -2317,7 +2187,6 @@ function renderizarItemsFacturaModal() {
         
         const precio = parseFloat(item.precioUnitario || item.precio || 0);
         const total = parseFloat(item.precio || 0);
-        const tieneItbis = true; // Por defecto asumimos que todo grava, el select NCF ajustará el total final
 
         row.innerHTML = `
             <td class="p-2"><input type="number" class="w-full text-center bg-transparent border border-gray-200 rounded p-1" value="${item.cantidad}" onchange="actualizarItemFactura(${index}, 'cantidad', this.value)"></td>
@@ -2337,9 +2206,8 @@ window.actualizarItemFactura = function(index, campo, valor) {
     const item = cotizacionAFacturar.items[index];
     if (campo === 'cantidad') item.cantidad = parseFloat(valor);
     if (campo === 'precio') item.precioUnitario = parseFloat(valor);
-    if (campo === 'descripcion') item.descripcion = valor; // Ajuste simple
+    if (campo === 'descripcion') item.descripcion = valor;
     
-    // Recalcular total linea
     item.precio = item.cantidad * item.precioUnitario;
     renderizarItemsFacturaModal();
 }
@@ -2361,12 +2229,11 @@ window.facturaAgregarItemVacio = function() {
 
 function recalcularTotalesFacturaModal() {
     let subtotal = 0;
-    cotizacionAFacturar.items.forEach(i => subtotal += i.precio);
+    cotizacionAFacturar.items.forEach(i => subtotal += parseFloat(i.precio || 0));
     
     const tipoNCF = document.getElementById('facturaTipoNCF').value;
     let itbis = 0;
     
-    // Lógica simple: B01/B02 gravan 18%
     if (tipoNCF === 'B01' || tipoNCF === 'B02') {
         itbis = subtotal * 0.18;
     }
@@ -2377,83 +2244,116 @@ function recalcularTotalesFacturaModal() {
     document.getElementById('facturaITBIS').textContent = `RD$ ${itbis.toFixed(2)}`;
     document.getElementById('facturaTotalGeneral').textContent = `RD$ ${total.toFixed(2)}`;
     
-    // Actualizar objeto global para envío
     cotizacionAFacturar.total = total;
 }
 
 function validarFormatoNCF(ncf) {
-  // Formato DGII: B + 2 dígitos tipo + 8 dígitos secuencia = 11 caracteres
-  // Ej: B0100000001
   const regex = /^B(01|02|04|14|15)\d{8}$/;
   return regex.test(ncf);
 }
 
+// ============================================
+// ✅ FIX PRINCIPAL: generarFacturaFinal
+// Normaliza items, recalcula total, maneja errores con finally
+// ============================================
 async function generarFacturaFinal() {
   if (!cotizacionAFacturar) return;
 
-  // Validación extra de seguridad en frontend
   const btnConfirmar = document.getElementById('btnConfirmarFactura');
   if (btnConfirmar && btnConfirmar.disabled) {
-      mostrarNotificacion('⛔ No se puede facturar: NCF Agotado o no configurado.', 'error');
-      return;
-  }
-
-  const rnc = document.getElementById('facturaClienteRNC').value;
-  const nombre = document.getElementById('facturaClienteNombre').value;
-  const tipoNCF = document.getElementById('facturaTipoNCF').value;
-  const abono = document.getElementById('facturaAbono').value;
-
-  if (!nombre) {
-    mostrarNotificacion('El nombre es obligatorio', 'error');
+    mostrarNotificacion('⛔ No se puede facturar: NCF Agotado o no configurado.', 'error');
     return;
   }
 
-  // Si es B01, RNC es obligatorio
+  const rnc     = document.getElementById('facturaClienteRNC').value.trim();
+  const nombre  = document.getElementById('facturaClienteNombre').value.trim();
+  const tipoNCF = document.getElementById('facturaTipoNCF').value;
+  const abono   = parseFloat(document.getElementById('facturaAbono').value || 0);
+
+  if (!nombre) {
+    mostrarNotificacion('El nombre del cliente es obligatorio', 'error');
+    return;
+  }
+
   if (tipoNCF === 'B01' && !validarRNC(rnc)) {
     mostrarNotificacion('Para Crédito Fiscal (B01) se requiere un RNC válido', 'error');
     return;
   }
 
-  console.log(`🧾 [FACTURACIÓN] Iniciando emisión de factura fiscal para ${tipoNCF}...`);
+  // ✅ FIX 1: Normalizar items — Firebase los puede devolver como objeto
+  const itemsNormalizados = Array.isArray(cotizacionAFacturar.items)
+    ? cotizacionAFacturar.items
+    : (cotizacionAFacturar.items ? Object.values(cotizacionAFacturar.items) : []);
+
+  if (itemsNormalizados.length === 0) {
+    mostrarNotificacion('La cotización no tiene items válidos', 'error');
+    return;
+  }
+
+  // ✅ FIX 2: Recalcular total desde los items normalizados (no confiar en el campo guardado)
+  const subtotal = itemsNormalizados.reduce((sum, item) => sum + parseFloat(item.precio || 0), 0);
+  const tieneItbis = tipoNCF === 'B01' || tipoNCF === 'B02';
+  const itbisCalculado = tieneItbis ? subtotal * 0.18 : 0;
+  const totalFinal = subtotal + itbisCalculado;
+
+  // ✅ FIX 3: Construir objeto limpio para el backend
+  const cotizacionParaBackend = {
+    id: cotizacionAFacturar.id,
+    nombre: cotizacionAFacturar.nombre,
+    items: itemsNormalizados,
+    subtotal: subtotal,
+    itbis_total: itbisCalculado,
+    total: totalFinal
+  };
+
+  console.log(`🧾 [FACTURACIÓN] Enviando a backend:`, cotizacionParaBackend);
   mostrarNotificacion(`Generando NCF ${tipoNCF}...`, 'info');
 
+  // Deshabilitar botón para evitar doble clic
+  if (btnConfirmar) {
+    btnConfirmar.disabled = true;
+    btnConfirmar.classList.add('opacity-50', 'cursor-not-allowed');
+  }
+
   try {
-    // 🔄 MIGRACIÓN A BACKEND: Delegamos la facturación al servidor
-    // Esto evita duplicidad de NCF y protege la lógica de secuencias
+    const condicionVenta = document.querySelector('input[name="facturaCondicionVenta"]:checked')?.value || 'contado';
+    const metodoPago     = document.getElementById('facturaMetodoPago').value;
+    const referenciaPago = document.getElementById('facturaReferencia').value;
+
     const response = await fetch(`${API_BASE_URL}/api/facturar`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        cotizacion: cotizacionAFacturar,
-        cliente: {
-          rnc: rnc,
-          nombre: nombre
-        },
-        condicionVenta: document.querySelector('input[name="facturaCondicionVenta"]:checked').value,
-        metodoPago: document.getElementById('facturaMetodoPago').value,
-        referenciaPago: document.getElementById('facturaReferencia').value,
-        tipoNCF: tipoNCF,
-        abono: abono // Enviar abono
+        cotizacion:    cotizacionParaBackend,
+        cliente:       { rnc, nombre },
+        tipoNCF,
+        condicionVenta,
+        metodoPago,
+        referenciaPago,
+        abono
       })
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || "Error en el servidor");
+      throw new Error(data.error || 'Error en el servidor');
     }
 
     mostrarNotificacion(`✅ ${data.mensaje}`, 'success');
     document.getElementById('modalFacturacion').classList.add('hidden');
-    
-    // Opcional: Recargar lista
+    cotizacionAFacturar = null;
     abrirModalCotizaciones();
 
   } catch (error) {
     console.error('Error facturando:', error);
-    mostrarNotificacion('Error al generar factura: ' + error.message, 'error');
+    mostrarNotificacion('❌ ' + error.message, 'error');
+  } finally {
+    // ✅ FIX 4: Siempre rehabilitar el botón, tanto en éxito como en error
+    if (btnConfirmar) {
+      btnConfirmar.disabled = false;
+      btnConfirmar.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
   }
 }
 
@@ -2462,7 +2362,6 @@ async function generarFacturaFinal() {
 // ============================================
 
 async function abrirModalFacturas() {
-  // 🛡️ VERIFICACIÓN DE SEGURIDAD
   if (!verificarPermisoAdmin()) return;
 
   const modal = document.getElementById('modalFacturasEmitidas');
@@ -2474,7 +2373,6 @@ async function abrirModalFacturas() {
   modal.classList.remove('hidden');
   if (lista) lista.innerHTML = '<div class="text-center py-10"><p class="text-xl animate-pulse">🔄 Cargando facturas...</p></div>';
 
-  // Establecer mes actual por defecto si no tiene valor
   if (!filtro.value) {
     const hoy = new Date();
     const mes = String(hoy.getMonth() + 1).padStart(2, '0');
@@ -2482,14 +2380,13 @@ async function abrirModalFacturas() {
   }
 
   try {
-    // OPTIMIZACIÓN: Cargar solo las últimas 20 facturas para que no se frise
     const snapshot = await db.ref("facturas").limitToLast(20).once("value");
     const data = snapshot.val();
 
     if (data) {
       todasLasFacturas = Object.keys(data).map(key => ({
-        ...data[key], // 1. Cargar datos primero
-        id: key       // 2. SOBRESCRIBIR con la clave real de Firebase (el ID verdadero)
+        ...data[key],
+        id: key
       })).sort((a, b) => new Date(b.fecha_facturacion) - new Date(a.fecha_facturacion));
     } else {
       todasLasFacturas = [];
@@ -2509,7 +2406,6 @@ async function cargarFacturasPorMes() {
   const lista = document.getElementById('listaFacturas');
   if (lista) lista.innerHTML = '<div class="text-center py-10"><p class="text-xl animate-pulse">🔄 Buscando en el servidor...</p></div>';
 
-  // Rango de fechas para el mes seleccionado
   const start = filtro + "-01";
   const end = filtro + "-31T23:59:59";
 
@@ -2531,28 +2427,16 @@ async function cargarFacturasPorMes() {
 
 function renderizarFacturas() {
   const lista = document.getElementById('listaFacturas');
-  const filtro = document.getElementById('filtroMesFacturas').value; // YYYY-MM
+  const filtro = document.getElementById('filtroMesFacturas').value;
   const ocultarAnuladas = document.getElementById('checkOcultarAnuladas')?.checked;
   const totalLabel = document.getElementById('totalFacturasMes');
-
-  // LÓGICA DE RECARGA POR FECHA (Si el usuario cambia el mes, buscamos en Firebase)
-  // Esto evita tener todas las facturas en memoria.
-  const btnVer = document.getElementById('btnVerFacturas');
-  // Verificamos si necesitamos recargar datos específicos del mes (si no están en memoria)
-  // Nota: Para una implementación completa, esto debería ser una función async separada llamada al cambiar el input date.
-  
-  // Si no hay facturas en memoria para este mes, podríamos sugerir recargar
-  // (En una implementación ideal, el evento 'change' del filtro dispararía una nueva consulta a Firebase)
   
   if (!lista) return;
 
-  // Filtrar por mes seleccionado
   const facturasFiltradas = todasLasFacturas.filter(f => {
     if (!f.fecha_facturacion) return false;
-    
     const coincideMes = f.fecha_facturacion.startsWith(filtro);
     if (ocultarAnuladas && f.estado === 'anulada') return false;
-
     return coincideMes;
   });
 
@@ -2569,11 +2453,9 @@ function renderizarFacturas() {
     const monto = parseFloat(f.total || 0);
     sumaTotal += monto;
     
-    // Lógica de estado y botón de anular
     const esAnulada = f.estado === 'anulada';
     const esNotaCredito = f.tipo_documento === 'Nota de Crédito';
     
-    // Estilos dinámicos según estado
     let estiloContenedor = "bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 flex justify-between items-center shadow-sm hover:shadow-md transition-shadow";
     let estiloTexto = "font-bold text-gray-800 dark:text-gray-200";
     let estiloMonto = esNotaCredito ? 'text-red-600' : 'text-gray-800 dark:text-white';
@@ -2581,7 +2463,6 @@ function renderizarFacturas() {
     let etiquetaEstado;
     if (esAnulada) {
         etiquetaEstado = '<span class="text-xs text-red-500 dark:text-red-400 font-bold border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 px-2 py-1 rounded">🚫 Anulada</span>';
-        // Modificar estilos para anuladas (Gris, tachado y opaco)
         estiloContenedor = "bg-gray-100 dark:bg-gray-900 p-4 rounded-xl border border-gray-200 dark:border-gray-800 flex justify-between items-center opacity-60 grayscale";
         estiloTexto = "font-bold text-gray-500 line-through";
         estiloMonto = "text-gray-400 line-through";
@@ -2595,7 +2476,6 @@ function renderizarFacturas() {
         `;
     }
 
-    // Limpiamos el NCF para evitar que rompa el botón de eliminar si tiene comillas
     const ncfSafe = f.ncf ? f.ncf.replace(/['"]/g, "") : "SIN-NCF";
 
     return `
@@ -2630,10 +2510,9 @@ async function imprimirFactura(idFactura) {
 
   mostrarNotificacion(`📄 Generando PDF para ${factura.ncf}...`, 'info');
 
-  // Preparar datos para el backend
   const items = Array.isArray(factura.items) ? factura.items : (factura.items ? Object.values(factura.items) : []);
   const subtotal = items.reduce((s, i) => s + parseFloat(i.precio || 0), 0);
-  const itbis = factura.itbis_total || (subtotal * 0.18); // Usar el guardado o recalcular
+  const itbis = factura.itbis_total || (subtotal * 0.18);
 
   const datosFactura = {
     id: factura.id,
@@ -2651,7 +2530,7 @@ async function imprimirFactura(idFactura) {
     total: factura.total,
     condicion: factura.condicion_venta,
     vencimiento: factura.fecha_vencimiento ? new Date(factura.fecha_vencimiento).toLocaleDateString('es-DO') : 'N/A',
-    abono: factura.abono || 0 // Incluir abono para el PDF
+    abono: factura.abono || 0
   };
 
   try {
@@ -2682,35 +2561,30 @@ async function imprimirFactura(idFactura) {
 }
 
 async function anularFactura(idFactura) {
-  // 🛡️ VERIFICACIÓN DE SEGURIDAD
   if (!verificarPermisoAdmin()) return;
 
   const facturaOriginal = todasLasFacturas.find(f => f.id === idFactura);
   if (!facturaOriginal) return;
 
-  // --- VALIDACIÓN DE MES CERRADO ---
   const fechaFactura = new Date(facturaOriginal.fecha_facturacion);
   const fechaActual = new Date();
   
-  // Comparamos año y mes. Si es menor, es mes pasado.
   if (fechaFactura.getFullYear() < fechaActual.getFullYear() || 
      (fechaFactura.getFullYear() === fechaActual.getFullYear() && fechaFactura.getMonth() < fechaActual.getMonth())) {
     mostrarNotificacion('⛔ No se puede anular una factura de un mes fiscal cerrado.', 'error');
     return;
   }
-  // ---------------------------------
 
-  // ABRIR MODAL DE SEGURIDAD EN LUGAR DE CONFIRM()
   idFacturaAAnular = idFactura;
   const modal = document.getElementById('modalConfirmarAnulacion');
   const input = document.getElementById('inputConfirmacionAnular');
   const btn = document.getElementById('btnEjecutarAnulacion');
   
   if (modal && input && btn) {
-    input.value = ''; // Limpiar input
-    btn.disabled = true; // Deshabilitar botón
+    input.value = '';
+    btn.disabled = true;
     modal.classList.remove('hidden');
-    setTimeout(() => input.focus(), 100); // Enfocar automáticamente
+    setTimeout(() => input.focus(), 100);
   }
 }
 
@@ -2719,7 +2593,6 @@ async function procesarAnulacion() {
   const idFactura = idFacturaAAnular;
   const facturaOriginal = todasLasFacturas.find(f => f.id === idFactura);
   
-  // Cerrar modal
   document.getElementById('modalConfirmarAnulacion').classList.add('hidden');
   idFacturaAAnular = null;
 
@@ -2728,7 +2601,6 @@ async function procesarAnulacion() {
   mostrarNotificacion('Generando Nota de Crédito...', 'info');
 
   try {
-    // 1. Obtener secuencia B04 (Nota de Crédito)
     const secuenciaRef = db.ref('secuencias_ncf/B04');
     const result = await secuenciaRef.transaction((currentData) => {
       if (currentData === null) return { actual: 1 };
@@ -2738,40 +2610,33 @@ async function procesarAnulacion() {
     const numeroSecuencia = result.snapshot.val().actual;
     const ncfNota = 'B04' + String(numeroSecuencia).padStart(8, '0');
 
-    // 2. Crear Nota de Crédito
     const notaCredito = {
       ...facturaOriginal,
       tipo_documento: 'Nota de Crédito',
       ncf: ncfNota,
-      ncf_modificado: facturaOriginal.ncf, // IMPORTANTE PARA 607
+      ncf_modificado: facturaOriginal.ncf,
       fecha_facturacion: new Date().toISOString(),
       origen_factura: idFactura,
-      total: -Math.abs(facturaOriginal.total) // Monto negativo
+      total: -Math.abs(facturaOriginal.total)
     };
     
-    delete notaCredito.id; 
+    delete notaCredito.id;
 
-    // 3. Guardar Nota de Crédito
     const newRef = db.ref('facturas').push(notaCredito);
-    await newRef; // Esperar a que se guarde
+    await newRef;
 
-    // 4. ACTUALIZAR factura original (NO BORRAR) para marcarla visualmente
     await db.ref(`facturas/${idFactura}`).update({ estado: 'anulada' });
 
-    // --- ACTUALIZACIÓN LOCAL (Para evitar recargar todo) ---
-    // 1. Actualizar estado de la original en la lista local
     const indexOriginal = todasLasFacturas.findIndex(f => f.id === idFactura);
     if (indexOriginal !== -1) {
       todasLasFacturas[indexOriginal].estado = 'anulada';
     }
 
-    // 2. Agregar la nueva nota de crédito a la lista
     notaCredito.id = newRef.key;
-    todasLasFacturas.unshift(notaCredito); // Poner al principio
-    todasLasFacturas.sort((a, b) => new Date(b.fecha_facturacion) - new Date(a.fecha_facturacion)); // Reordenar
+    todasLasFacturas.unshift(notaCredito);
+    todasLasFacturas.sort((a, b) => new Date(b.fecha_facturacion) - new Date(a.fecha_facturacion));
     
-    renderizarFacturas(); // Pintar de nuevo
-    // ------------------------------------------------------
+    renderizarFacturas();
 
     mostrarNotificacion(`✅ Factura anulada con ${ncfNota}`, 'success');
 
@@ -2785,7 +2650,6 @@ async function procesarAnulacion() {
 // ✏️ EDICIÓN DE FACTURA (MODAL ROBUSTO)
 // ============================================
 
-// --- Helpers para el modal de edición (portado desde app.js) ---
 function formatearMonedaModal(valor) { 
     return new Intl.NumberFormat('es-DO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(valor || 0); 
 }
@@ -3010,12 +2874,7 @@ window.agregarItemVacioModal = function() {
         if (idx > maxIndex) maxIndex = idx;
     });
     const newIndex = maxIndex + 1;
-
-    const row = document.createElement('tr');
-    row.setAttribute('data-index', newIndex);
-    row.className = "group hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors animate-fade-in";
-    row.innerHTML = renderizarItemsEditablesModal([{nombre: 'Nuevo Item', cantidad: 1, precio: 0, precioUnitario: 0}], newIndex).replace(/data-index="0"/, `data-index="${newIndex}"`);
-    tbody.insertAdjacentHTML('beforeend', renderizarItemsEditablesModal([{nombre: 'Nuevo Item', cantidad: 1, precio: 0, precioUnitario: 0, descripcion: ''}])[0].replace('data-index="0"', `data-index="${newIndex}"`));
+    tbody.insertAdjacentHTML('beforeend', renderizarItemsEditablesModal([{nombre: 'Nuevo Item', cantidad: 1, precio: 0, precioUnitario: 0, descripcion: ''}]).replace('data-index="0"', `data-index="${newIndex}"`));
     recalcularTotalesModal();
 };
 
@@ -3096,7 +2955,6 @@ window.guardarEdicionFactura = async function(id) {
         });
         mostrarNotificacion('✅ Factura actualizada', 'success');
         cerrarModalEditarFactura();
-        // Recargar lista si está visible
         if (!document.getElementById('modalFacturasEmitidas').classList.contains('hidden')) {
             abrirModalFacturas(); 
         }
@@ -3120,8 +2978,6 @@ async function generarReporte607() {
 
   mostrarNotificacion('⏳ Descargando datos del mes...', 'info');
 
-  // OPTIMIZACIÓN: Descargar rango de fechas específico para el reporte
-  // Formato filtro: YYYY-MM -> Rango: YYYY-MM-01 a YYYY-MM-31
   const start = filtro + "-01";
   const end = filtro + "-31T23:59:59";
 
@@ -3138,16 +2994,14 @@ async function generarReporte607() {
     return;
   }
 
-  // Preparar datos para Excel Profesional
   const data = facturasFiltradas.map(f => {
     const rnc = f.rnc_cliente || '';
     const tipoId = rnc.length === 9 ? 1 : 2; 
-    const fecha = f.fecha_facturacion.slice(0, 10); // YYYY-MM-DD
+    const fecha = f.fecha_facturacion.slice(0, 10);
     const total = parseFloat(f.total || 0);
     const ncfModificado = f.ncf_modificado || '';
     const motivo = f.motivo_anulacion || '';
     
-    // Lógica Fiscal DGII: B01 y B02 gravados al 18%
     const esGravado = f.ncf.startsWith('B01') || f.ncf.startsWith('B02');
     const itbis = esGravado ? (total - (total / 1.18)) : 0;
     const monto = total - itbis;
@@ -3166,36 +3020,25 @@ async function generarReporte607() {
     };
   });
 
-  // Generar Excel Nativo (.xlsx)
   const worksheet = XLSX.utils.json_to_sheet(data);
   
-  // Ajuste de columnas profesional
   const wscols = [
-    {wch: 15}, // RNC
-    {wch: 8},  // TIPO ID
-    {wch: 13}, // NCF
-    {wch: 15}, // NCF MODIFICADO
-    {wch: 12}, // FECHA
-    {wch: 15}, // MONTO
-    {wch: 15}, // ITBIS
-    {wch: 15}, // TOTAL
-    {wch: 30}  // MOTIVO
+    {wch: 15}, {wch: 8}, {wch: 13}, {wch: 15}, {wch: 12},
+    {wch: 15}, {wch: 15}, {wch: 15}, {wch: 30}
   ];
   worksheet['!cols'] = wscols;
 
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Reporte 607");
-
   XLSX.writeFile(workbook, `Reporte_607_${filtro}.xlsx`);
   
   mostrarNotificacion('Reporte 607 (Excel) descargado', 'success');
 }
 
 async function generarReporteDiario() {
-  const hoy = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const hoy = new Date().toISOString().slice(0, 10);
   mostrarNotificacion('⏳ Generando reporte de ventas de hoy...', 'info');
 
-  // Rango de todo el día de hoy
   const start = hoy + "T00:00:00";
   const end = hoy + "T23:59:59";
 
@@ -3213,7 +3056,6 @@ async function generarReporteDiario() {
       return;
     }
 
-    // Preparar datos para Excel
     const data = facturas.map(f => ({
       "Hora": new Date(f.fecha_facturacion).toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit' }),
       "NCF": f.ncf,
@@ -3223,19 +3065,16 @@ async function generarReporteDiario() {
       "Total": parseFloat(f.total || 0)
     }));
 
-    // Calcular total del día (excluyendo anuladas)
     const totalVentas = facturas
       .filter(f => f.estado !== 'anulada')
       .reduce((sum, f) => sum + parseFloat(f.total || 0), 0);
 
-    // Agregar fila de total al final
-    data.push({}); // Fila vacía
+    data.push({});
     data.push({ 
       "Cliente": "TOTAL VENDIDO HOY:", 
       "Total": totalVentas 
     });
 
-    // Generar Excel
     const worksheet = XLSX.utils.json_to_sheet(data);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Ventas Hoy");
@@ -3271,7 +3110,6 @@ async function generarReporteIT1(formato = 'excel') {
   if (!filtro) return mostrarNotificacion('Seleccione mes', 'warning');
   mostrarNotificacion('⏳ Procesando IT-1...', 'info');
 
-  // OPTIMIZACIÓN: Consulta específica por rango de fecha
   const start = filtro + "-01";
   const end = filtro + "-31T23:59:59";
 
@@ -3288,7 +3126,6 @@ async function generarReporteIT1(formato = 'excel') {
     return;
   }
 
-  // Inicializar acumuladores
   const resumen = {
     totalOperaciones: 0,
     ventasGravadas: 0,
@@ -3301,28 +3138,20 @@ async function generarReporteIT1(formato = 'excel') {
   facturasFiltradas.forEach(f => {
     const total = parseFloat(f.total || 0);
     const ncfPrefix = f.ncf.substring(0, 3);
-    const esNotaCredito = f.tipo_documento === 'Nota de Crédito';
     
-    // Lógica Fiscal IT-1
     let itbisCalculado = 0;
     let montoBase = total;
     let esExento = false;
 
-    // B14 (Regímenes Especiales) y B15 (Gubernamental) suelen tratarse diferente, 
-    // pero para impresión general asumiremos B14 exento y B15 gravado con retención.
-    // Aquí simplificamos: B01/B02/B15 = Gravado 18%. B14 = Exento.
-    
     if (ncfPrefix === 'B14') {
       esExento = true;
       itbisCalculado = 0;
       montoBase = total;
     } else {
-      // Gravado 18%
       itbisCalculado = total - (total / 1.18);
       montoBase = total - itbisCalculado;
     }
 
-    // Acumular (Las Notas de Crédito ya tienen 'total' negativo, así que restan)
     resumen.totalOperaciones += total;
     
     if (esExento) {
@@ -3333,14 +3162,13 @@ async function generarReporteIT1(formato = 'excel') {
     }
   });
 
-  const itbisAdelantado = 0.00; 
+  const itbisAdelantado = 0.00;
   const itbisAPagar = resumen.itbisFacturado - itbisAdelantado;
   
-  // --- EXPORTAR EXCEL ---
   const data = [
     { "CONCEPTO": "Periodo Fiscal", "VALOR": filtro },
     { "CONCEPTO": "Cantidad Comprobantes", "VALOR": resumen.cantidadFacturas },
-    { "CONCEPTO": "", "VALOR": "" }, // Espacio
+    { "CONCEPTO": "", "VALOR": "" },
     { "CONCEPTO": "TOTAL OPERACIONES (VENTAS BRUTAS)", "VALOR": parseFloat(resumen.totalOperaciones.toFixed(2)) },
     { "CONCEPTO": "Ventas Exentas (B14)", "VALOR": parseFloat(resumen.ventasExentas.toFixed(2)) },
     { "CONCEPTO": "Ventas Gravadas (Base Imponible)", "VALOR": parseFloat(resumen.ventasGravadas.toFixed(2)) },
@@ -3368,17 +3196,14 @@ async function abrirModalCotizaciones() {
   document.body.style.overflow = 'hidden';
 
   try {
-    // Cargar datos frescos de Firebase
-    // OPTIMIZACIÓN: Solo las últimas 20 cotizaciones para velocidad
     const snapshot = await db.ref("cotizaciones").limitToLast(20).once("value");
     const data = snapshot.val();
 
     if (data) {
       todasLasCotizaciones = Object.keys(data).map(key => ({
-        ...data[key], // 1. Cargar datos primero (si trae un id falso, se carga aquí)
-        id: key       // 2. SOBRESCRIBIR con la clave real de Firebase (el ID verdadero)
+        ...data[key],
+        id: key
       })).sort((a, b) => {
-        // Ordenar descendente por fecha
         return new Date(b.fecha || b.fechaISO) - new Date(a.fecha || a.fechaISO);
       });
     } else {
@@ -3420,7 +3245,7 @@ function enviarWhatsApp() {
   
   mensaje += `*TOTAL ESTIMADO: ${totalTexto}*`;
 
-  const numeroTelefono = "18096821075"; // Tu número
+  const numeroTelefono = "18096821075";
   const url = `https://wa.me/${numeroTelefono}?text=${encodeURIComponent(mensaje)}`;
   
   window.open(url, '_blank');
@@ -3431,7 +3256,6 @@ function enviarWhatsApp() {
 // ============================================
 
 function mostrarNotificacion(mensaje, tipo = 'success') {
-  // Crear contenedor si no existe
   let container = document.querySelector('.toast-container');
   if (!container) {
     container = document.createElement('div');
@@ -3439,7 +3263,6 @@ function mostrarNotificacion(mensaje, tipo = 'success') {
     document.body.appendChild(container);
   }
 
-  // Iconos según tipo
   const iconos = {
     success: '✅',
     error: '❌',
@@ -3455,7 +3278,6 @@ function mostrarNotificacion(mensaje, tipo = 'success') {
 
   container.appendChild(toast);
 
-  // Eliminar después de 3 segundos
   setTimeout(() => {
     toast.style.animation = 'toastFadeOut 0.4s forwards';
     setTimeout(() => toast.remove(), 400);
@@ -3467,9 +3289,6 @@ function mostrarNotificacion(mensaje, tipo = 'success') {
 // ============================================
 
 function registrarLogVenta(datos, accion = 'guardar') {
-  // Esta función se mantiene solo para el log de ventas al imprimir (si se desea)
-  // O se puede redirigir a una colección 'ventas' en Firebase
-  
   try {
     db.ref("ventas_log").push({
       ...datos,
@@ -3483,17 +3302,17 @@ function registrarLogVenta(datos, accion = 'guardar') {
 }
 
 // ============================================
-// �🚀 INICIALIZACIÓN
+// 🚀 INICIALIZACIÓN
 // ============================================
 
 document.addEventListener('DOMContentLoaded', () => {
   marcarPaginaActiva();
   configurarMenuMovil();
   inicializarEventListeners();
-  inicializarSeguridad(); // ← Iniciar listener de Auth
-  inicializarPrecioTiempoReal(); // ← Agregado
-  inicializarCombos(); // ← NUEVO: Cargar combos al inicio
-  const btnGenPDF = document.getElementById('generarPDF'); // Botón grande
+  inicializarSeguridad();
+  inicializarPrecioTiempoReal();
+  inicializarCombos();
+  const btnGenPDF = document.getElementById('generarPDF');
   if (btnGenPDF) btnGenPDF.addEventListener('click', imprimirCotizacion);
 
   console.log('✅ Script inicializado. Escribe "probarConexionFirebase()" en la consola para verificar.');
@@ -3542,24 +3361,16 @@ window.probarConexionFirebase = async function() {
 function inicializarSeguridad() {
   auth.onAuthStateChanged(user => {
     actualizarIconoAuth(user);
-    // Si la seguridad está activa, ocultamos cosas automáticamente
-    if (ACTIVAR_SEGURIDAD && !user) {
-      // Opcional: Ocultar botones sensibles visualmente si se desea
-      // document.getElementById('btnVerFacturas').style.display = 'none';
-    }
   });
 }
 
 function verificarPermisoAdmin() {
-  // 1. Si el interruptor está apagado, DEJAR PASAR A TODOS
   if (!ACTIVAR_SEGURIDAD) return true;
 
-  // 2. Si está encendido, verificar usuario real
   const user = auth.currentUser;
   if (user) {
-    return true; // Tiene permiso
+    return true;
   } else {
-    // No tiene permiso, mostrar login
     document.getElementById('modalLogin').classList.remove('hidden');
     mostrarNotificacion('🔒 Acceso restringido a personal autorizado', 'warning');
     return false;
@@ -3569,20 +3380,16 @@ function verificarPermisoAdmin() {
 function manejarClickAuth() {
   const user = auth.currentUser;
   if (user) {
-    // 🛑 Confirmación de seguridad antes de salir
     if (!confirm("¿Estás seguro de que deseas cerrar la sesión?")) return;
 
-    // Si está logueado, cerrar sesión
     auth.signOut().then(() => {
       mostrarNotificacion('Sesión cerrada', 'info');
       if (ACTIVAR_SEGURIDAD) {
-        // Cerrar modales protegidos si están abiertos
         document.getElementById('modalFacturacion').classList.add('hidden');
         document.getElementById('modalFacturasEmitidas').classList.add('hidden');
       }
     });
   } else {
-    // Si no, abrir modal login
     document.getElementById('modalLogin').classList.remove('hidden');
   }
 }
@@ -3593,12 +3400,10 @@ function actualizarIconoAuth(user) {
 
   if (user) {
     const nombreUsuario = user.email ? user.email.split('@')[0] : 'Usuario';
-    // Botón rojo explícito con texto "Salir" y el nombre del usuario
     btn.innerHTML = `<span class="mr-1 text-lg">🚪</span><span class="font-bold">Salir (${nombreUsuario})</span>`;
     btn.className = "flex items-center text-white bg-red-600 hover:bg-red-700 focus:ring-4 focus:ring-red-300 font-medium rounded-lg text-sm px-3 py-2 mr-2 transition-all shadow-md";
     btn.title = "Cerrar Sesión";
   } else {
-    // Estado original (Candado gris discreto)
     btn.innerHTML = `<span id="iconAuth">🔒</span>`;
     btn.className = "text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 focus:outline-none rounded-lg text-sm p-2.5 mr-1 transition-all";
     btn.title = "Acceso Empleados";
@@ -3610,15 +3415,14 @@ async function procesarLogin(e) {
   const usuario = document.getElementById('usuarioLogin').value.trim();
   const pass = document.getElementById('passwordLogin').value;
   
-  // 🔐 TRUCO FIREBASE: Convertimos usuario a email interno
   const email = `${usuario}@servigaco.com`;
 
   try {
     await auth.signInWithEmailAndPassword(email, pass);
     document.getElementById('modalLogin').classList.add('hidden');
-    reproducirSonidoExito(); // 🎵 Sonido de éxito
+    reproducirSonidoExito();
     const nombreDisplay = usuario.charAt(0).toUpperCase() + usuario.slice(1);
-    mostrarBienvenida(nombreDisplay); // 🎉 Nueva bienvenida visual grande
+    mostrarBienvenida(nombreDisplay);
     document.getElementById('formLogin').reset();
   } catch (error) {
     console.error(error);
@@ -3636,7 +3440,6 @@ function inicializarCombos() {
   const select = document.getElementById('selectCombos');
   if (!select) return;
 
-  // Escuchar cambios en tiempo real en la colección 'combos'
   db.ref('combos').on('value', (snapshot) => {
     combosDataCache = snapshot.val() || {};
     filtrarCombos();
@@ -3650,7 +3453,6 @@ window.filtrarCombos = function() {
   
   if (!select) return;
 
-  // Guardar selección actual
   const valorActual = select.value;
 
   select.innerHTML = '<option value="">-- Selecciona un paquete --</option>';
@@ -3668,14 +3470,12 @@ window.filtrarCombos = function() {
     }
   });
 
-  // Restaurar selección si aún es válida
   if (valorActual && select.querySelector(`option[value="${valorActual}"]`)) {
     select.value = valorActual;
   }
 }
 
 async function guardarNuevoCombo() {
-  // Usamos tu sistema de seguridad existente
   if (!verificarPermisoAdmin()) return;
 
   const nombreInput = document.getElementById('inputNombreCombo');
@@ -3696,7 +3496,6 @@ async function guardarNuevoCombo() {
       creado: firebase.database.ServerValue.TIMESTAMP
     });
     
-    // Limpiar campos
     nombreInput.value = '';
     precioInput.value = '';
     mostrarNotificacion('✅ Combo guardado exitosamente', 'success');
@@ -3765,7 +3564,6 @@ async function eliminarCombo(id) {
 // ============================================
 
 async function abrirModalNCF() {
-    // 🛡️ VERIFICACIÓN DE SEGURIDAD
     if (!verificarPermisoAdmin()) return;
 
     document.getElementById('modalConfiguracionNCF').classList.remove('hidden');
@@ -3828,7 +3626,6 @@ async function guardarConfiguracionNCF(e) {
     const inicio = document.getElementById('ncfSecuenciaInicio').value;
     const fin = document.getElementById('ncfSecuenciaFin').value;
 
-    // Construir NCF completo automáticamente (Tipo + 8 dígitos)
     const desde = tipo + String(inicio).padStart(8, '0');
     const hasta = tipo + String(fin).padStart(8, '0');
 
@@ -3870,13 +3667,12 @@ function reproducirSonidoExito() {
     osc.connect(gain);
     gain.connect(ctx.destination);
 
-    // Un "ding" suave y agradable (Onda Senoidal)
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(523.25, ctx.currentTime); // Nota Do (C5)
-    osc.frequency.exponentialRampToValueAtTime(1046.5, ctx.currentTime + 0.1); // Sube a Do (C6) rápidamente
+    osc.frequency.setValueAtTime(523.25, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(1046.5, ctx.currentTime + 0.1);
 
-    gain.gain.setValueAtTime(0.05, ctx.currentTime); // Volumen suave (5%)
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.5); // Desvanecimiento lento (Fade out)
+    gain.gain.setValueAtTime(0.05, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.5);
 
     osc.start();
     osc.stop(ctx.currentTime + 1.5);
@@ -3886,18 +3682,15 @@ function reproducirSonidoExito() {
 }
 
 // ============================================
-// 🎉 BIENVENIDA ANIMADA (GRANDE Y LINDA)
+// 🎉 BIENVENIDA ANIMADA
 // ============================================
 function mostrarBienvenida(nombre) {
-  // 1. Crear el overlay (fondo oscuro borroso)
   const overlay = document.createElement('div');
   overlay.className = 'fixed inset-0 z-[3000] flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity duration-500';
-  overlay.style.opacity = '0'; // Inicio invisible para fade-in
+  overlay.style.opacity = '0';
 
-  // 2. Crear la tarjeta de bienvenida
   const card = document.createElement('div');
   card.className = 'bg-white dark:bg-gray-800 p-12 rounded-[2rem] shadow-2xl text-center transform scale-50 opacity-0 border-4 border-blue-50 dark:border-blue-900/30';
-  // Efecto rebote "pop" elástico muy suave
   card.style.transition = 'all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)'; 
 
   card.innerHTML = `
@@ -3913,14 +3706,12 @@ function mostrarBienvenida(nombre) {
   overlay.appendChild(card);
   document.body.appendChild(overlay);
 
-  // 3. Activar animación de entrada
   requestAnimationFrame(() => {
     overlay.style.opacity = '1';
     card.style.transform = 'scale(1)';
     card.style.opacity = '1';
   });
 
-  // 4. Cerrar automáticamente
   setTimeout(() => {
     overlay.style.opacity = '0';
     setTimeout(() => overlay.remove(), 500);
