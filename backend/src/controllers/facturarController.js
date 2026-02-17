@@ -32,90 +32,84 @@ const crearFactura = async (req, res) => {
 
     // Validación 1: Existencia
     if (!snapshot.exists() || !data) {
-        console.warn(`⚠️ [Facturación] Intento de uso de NCF no configurado: ${tipoNCF}`);
-        return res.status(400).json({ 
-            error: `El tipo de NCF '${tipoNCF}' no está configurado en el sistema.` 
-        });
+      console.warn(`⚠️ [Facturación] Intento de uso de NCF no configurado: ${tipoNCF}`);
+      return res.status(400).json({ 
+        error: `El tipo de NCF '${tipoNCF}' no está configurado en el sistema.` 
+      });
     }
 
-    // Validación 2.1: Fecha de Vencimiento (Nueva)
+    // Validación 2.1: Fecha de Vencimiento
     if (data.fecha_vencimiento) {
-        const hoy = new Date().toISOString().split('T')[0];
-        if (hoy > data.fecha_vencimiento) {
-            return res.status(400).json({ 
-                error: `La secuencia NCF '${tipoNCF}' venció el ${data.fecha_vencimiento}.` 
-            });
-        }
-    }
-
-    // Validación 2: Activo
-    if (data.activo === false || data.activo === 'false') {
+      const hoy = new Date().toISOString().split('T')[0];
+      if (hoy > data.fecha_vencimiento) {
         return res.status(400).json({ 
-            error: `La secuencia NCF '${tipoNCF}' está desactivada.` 
+          error: `La secuencia NCF '${tipoNCF}' venció el ${data.fecha_vencimiento}.` 
         });
+      }
     }
 
-    // Validación 3: Campos obligatorios y tipos (Evita el error de "incompletos")
+    // Validación 2.2: Activo (consistente con la transacción)
+    if (data.activo === false || data.activo === 'false') {
+      return res.status(400).json({ 
+        error: `La secuencia NCF '${tipoNCF}' está desactivada.` 
+      });
+    }
+
+    // Validación 3: Campos obligatorios y tipos
     const actual = parseInt(data.actual, 10);
-    const hasta = parseInt(data.hasta, 10);
+    const hasta  = parseInt(data.hasta,  10);
 
     if (isNaN(actual) || isNaN(hasta)) {
-        return res.status(400).json({ 
-            error: `Configuración corrupta para '${tipoNCF}'. Faltan campos 'actual' o 'hasta'.` 
-        });
+      return res.status(400).json({ 
+        error: `Configuración corrupta para '${tipoNCF}'. Faltan campos 'actual' o 'hasta'.` 
+      });
     }
 
     // Validación 4: Límite (Pre-check)
-    // Nota: Si actual == hasta, ya se usó el último, así que no hay disponibles.
     if (actual >= hasta) {
-        return res.status(400).json({ 
-            error: `⛔ Comprobantes '${tipoNCF}' AGOTADOS. Actual: ${actual}, Límite: ${hasta}.` 
-        });
+      return res.status(400).json({ 
+        error: `⛔ Comprobantes '${tipoNCF}' AGOTADOS. Actual: ${actual}, Límite: ${hasta}.` 
+      });
     }
 
     // 3. TRANSACCIÓN ATÓMICA (Incremento seguro)
     const result = await secuenciaRef.transaction((currentData) => {
-      // Si el nodo no existe o es nulo, abortamos (no creamos nada)
+      // Abortar si el nodo no existe (evita creación accidental)
       if (currentData === null) return;
-      
-      // Validaciones de seguridad dentro de la transacción (Concurrency safe)
-      if (!currentData.activo) return;
 
-      // Validación atómica de fecha
+      // Normalización robusta del campo 'activo' (soporta boolean y string)
+      const isActivo = currentData.activo === true || currentData.activo === 'true';
+      if (!isActivo) return;
+
+      // Validación atómica de fecha de vencimiento
       if (currentData.fecha_vencimiento) {
-          const hoy = new Date().toISOString().split('T')[0];
-          if (hoy > currentData.fecha_vencimiento) return;
+        const hoy = new Date().toISOString().split('T')[0];
+        if (hoy > currentData.fecha_vencimiento) return;
       }
 
-      // Obtener valores numéricos seguros
+      // Obtener valores numéricos de forma segura
       const actual = currentData.actual !== undefined ? Number(currentData.actual) : 0;
-      const desde = currentData.desde !== undefined ? Number(currentData.desde) : 1;
-      const hasta = Number(currentData.hasta);
+      const desde  = currentData.desde  !== undefined ? Number(currentData.desde)  : 1;
+      const hasta  = Number(currentData.hasta);
 
-      if (isNaN(hasta)) return;
+      // Abortar si la configuración está corrupta
+      if (isNaN(actual) || isNaN(desde) || isNaN(hasta)) return;
 
-      // Calcular siguiente y validar rango
+      // Calcular siguiente número y validar rango
       let siguiente = actual + 1;
       if (siguiente < desde) siguiente = desde;
-      
       if (siguiente > hasta) return; // Agotado
 
-      // Retornar nuevo estado
       return { ...currentData, actual: siguiente };
     });
 
     // 4. Manejo del resultado de la transacción
     if (!result.committed || !result.snapshot.exists()) {
-        // Si falló, probablemente fue por una de las condiciones de aborto en la transacción
-        // Como ya hicimos pre-validación, lo más probable es concurrencia extrema o borrado
-        return res.status(400).json({ 
-            error: `No se pudo generar el NCF '${tipoNCF}'. Verifique que esté activo y tenga disponibilidad.` 
-        });
+      return res.status(400).json({ 
+        error: `No se pudo generar el NCF '${tipoNCF}'. Verifique que esté activo y tenga disponibilidad.` 
+      });
     }
 
-    // El valor que usamos es el que tenía 'actual' ANTES de incrementarse en la transacción
-    // CORRECCIÓN: Ahora 'actual' representa el ÚLTIMO USADO.
-    // Al incrementarse en la transacción, el valor en snapshot es el que acabamos de reservar.
     const numeroSecuencia = parseInt(result.snapshot.val().actual, 10);
     
     console.log(`✅ [Facturación] Secuencia ${tipoNCF} consumida. Nuevo contador en DB: ${result.snapshot.val().actual}`);
@@ -131,10 +125,10 @@ const crearFactura = async (req, res) => {
       razon_social: cliente.nombre,
       fecha_facturacion: new Date().toISOString(),
       origen_cotizacion: cotizacion.id,
-      estado: 'vigente', // Estado inicial de la factura
-      impresa: false, // Bandera informativa (no bloquea edición)
+      estado: 'vigente',
+      impresa: false,
       fecha_creacion: new Date().toISOString(),
-      historial_modificaciones: [], // Inicializamos el historial
+      historial_modificaciones: [],
       condicion_venta: condicionVenta || 'contado',
       metodo_pago: metodoPago || 'efectivo',
       referencia: referenciaPago || '',
@@ -159,6 +153,7 @@ const crearFactura = async (req, res) => {
       mensaje: `Factura ${ncfCompleto} generada correctamente`,
       factura: { id: facturaRef.key, ...nuevaFactura }
     });
+
   } catch (error) {
     console.error("❌ Error al generar la factura:", error);
     res.status(500).json({ error: "Error interno del servidor al facturar" });
@@ -186,7 +181,9 @@ const editarFactura = async (req, res) => {
     
     // Obtener factura actual para historial
     const snapshot = await facturaRef.once('value');
-    if (!snapshot.exists()) return res.status(404).json({ success: false, error: 'Factura no encontrada' });
+    if (!snapshot.exists()) {
+      return res.status(404).json({ success: false, error: 'Factura no encontrada' });
+    }
     const facturaActual = snapshot.val();
 
     // Registrar cambios en historial
