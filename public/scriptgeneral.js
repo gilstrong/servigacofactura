@@ -1091,6 +1091,9 @@ function inicializarEventListeners() {
   const checkAnuladas = document.getElementById('checkOcultarAnuladas');
   if (checkAnuladas) checkAnuladas.addEventListener('change', renderizarFacturas);
 
+  const filtroCliente = document.getElementById('filtroClienteFacturas');
+  if (filtroCliente) filtroCliente.addEventListener('change', renderizarFacturas);
+
   const btnExportar607 = document.getElementById('btnExportar607');
   if (btnExportar607) btnExportar607.addEventListener('click', generarReporte607);
 
@@ -1918,7 +1921,7 @@ window.seleccionarClienteBusqueda = function(rnc, nombre) {
   const infoLabel = document.getElementById('infoClienteRNC');
   infoLabel.textContent = '✅ Cliente seleccionado';
   infoLabel.classList.remove('hidden');
-  
+
   const selectNCF = document.getElementById('facturaTipoNCF');
   const rncLimpio = rnc.replace(/-/g, '');
 
@@ -2380,7 +2383,7 @@ async function abrirModalFacturas() {
   }
 
   try {
-    const snapshot = await db.ref("facturas").limitToLast(20).once("value");
+    const snapshot = await db.ref("facturas").limitToLast(100).once("value");
     const data = snapshot.val();
 
     if (data) {
@@ -2392,10 +2395,35 @@ async function abrirModalFacturas() {
       todasLasFacturas = [];
     }
 
+    poblarFiltroClientes();
     renderizarFacturas();
   } catch (error) {
     console.error("Error cargando facturas:", error);
     lista.innerHTML = '<p class="text-center text-red-500">Error al cargar datos.</p>';
+  }
+}
+
+function poblarFiltroClientes() {
+  const select = document.getElementById('filtroClienteFacturas');
+  if (!select) return;
+  
+  const clientes = new Set();
+  todasLasFacturas.forEach(f => {
+    if (f.razon_social) clientes.add(f.razon_social);
+  });
+  
+  const valorActual = select.value;
+  select.innerHTML = '<option value="">Todos los clientes</option>';
+  
+  Array.from(clientes).sort().forEach(cliente => {
+    const option = document.createElement('option');
+    option.value = cliente;
+    option.textContent = cliente;
+    select.appendChild(option);
+  });
+  
+  if (valorActual && clientes.has(valorActual)) {
+    select.value = valorActual;
   }
 }
 
@@ -2418,6 +2446,7 @@ async function cargarFacturasPorMes() {
     } else {
       todasLasFacturas = [];
     }
+    poblarFiltroClientes();
     renderizarFacturas();
   } catch (error) {
     console.error("Error cargando mes:", error);
@@ -2429,6 +2458,7 @@ function renderizarFacturas() {
   const lista = document.getElementById('listaFacturas');
   const filtro = document.getElementById('filtroMesFacturas').value;
   const ocultarAnuladas = document.getElementById('checkOcultarAnuladas')?.checked;
+  const filtroCliente = document.getElementById('filtroClienteFacturas')?.value;
   const totalLabel = document.getElementById('totalFacturasMes');
   
   if (!lista) return;
@@ -2437,6 +2467,7 @@ function renderizarFacturas() {
     if (!f.fecha_facturacion) return false;
     const coincideMes = f.fecha_facturacion.startsWith(filtro);
     if (ocultarAnuladas && f.estado === 'anulada') return false;
+    if (filtroCliente && f.razon_social !== filtroCliente) return false;
     return coincideMes;
   });
 
@@ -3355,6 +3386,94 @@ window.probarConexionFirebase = async function() {
 };
 
 // ============================================
+// 👤 HISTORIAL POR CLIENTE (NUEVO)
+// ============================================
+
+let historialClienteState = {
+  lastDocId: null,
+  isLoading: false,
+  clienteId: null,
+  clienteNombre: null
+};
+
+function cerrarModalHistorialCliente() {
+  document.getElementById('modalHistorialCliente')?.classList.add('hidden');
+}
+
+async function abrirModalHistorialCliente(clienteId, clienteNombre) {
+  const modal = document.getElementById('modalHistorialCliente');
+  const listaContainer = document.getElementById('listaHistorialCliente');
+  const nombreHeader = document.getElementById('nombreClienteHistorial');
+
+  if (!modal || !listaContainer || !nombreHeader) return;
+
+  // Resetear estado para el nuevo cliente
+  historialClienteState = {
+    lastDocId: null,
+    isLoading: false,
+    clienteId: clienteId,
+    clienteNombre: clienteNombre
+  };
+
+  nombreHeader.textContent = clienteNombre;
+  listaContainer.innerHTML = '<p class="text-center py-8 text-gray-500 animate-pulse">Cargando historial...</p>';
+  modal.classList.remove('hidden');
+
+  // Cargar la primera página del historial
+  await fetchHistorialCliente(true);
+}
+
+async function fetchHistorialCliente(isInitialLoad = false) {
+  if (historialClienteState.isLoading) return;
+  historialClienteState.isLoading = true;
+
+  const { clienteId, lastDocId } = historialClienteState;
+  const listaContainer = document.getElementById('listaHistorialCliente');
+  
+  try {
+    // Construimos la URL para llamar al backend
+    let url = `${API_BASE_URL}/api/facturas/cliente/${clienteId}?limit=20`;
+    if (lastDocId) {
+      url += `&lastDocId=${lastDocId}`;
+    }
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || 'Error del servidor al buscar historial.');
+    }
+
+    const result = await response.json();
+    const { facturas } = result.data;
+
+    if (isInitialLoad && facturas.length === 0) {
+      listaContainer.innerHTML = '<p class="text-center py-8 text-gray-500">Este cliente no tiene facturas registradas.</p>';
+      return;
+    }
+
+    const facturasHtml = facturas.map(factura => {
+      // El backend devuelve el Timestamp como un objeto con _seconds
+      const fecha = new Date(factura.createdAt._seconds * 1000).toLocaleDateString('es-DO');
+      const total = parseFloat(factura.total || 0).toFixed(2);
+      return `
+        <div class="p-3 mb-2 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 flex justify-between items-center">
+          <div><p class="font-bold text-sm text-blue-700 dark:text-blue-400">${factura.ncf}</p><p class="text-xs text-gray-500 dark:text-gray-400">Emitida el ${fecha}</p></div>
+          <div class="text-right"><p class="font-semibold text-gray-800 dark:text-gray-200">RD$ ${total}</p></div>
+        </div>`;
+    }).join('');
+
+    if (isInitialLoad) listaContainer.innerHTML = facturasHtml;
+    else listaContainer.insertAdjacentHTML('beforeend', facturasHtml);
+
+  } catch (error) {
+    console.error('Error al cargar historial del cliente:', error);
+    listaContainer.innerHTML = `<p class="text-center py-8 text-red-500">Error: ${error.message}</p>`;
+  } finally {
+    historialClienteState.isLoading = false;
+  }
+}
+
+// ============================================
 // 🔐 LÓGICA DE AUTENTICACIÓN Y SEGURIDAD
 // ============================================
 
@@ -3717,3 +3836,6 @@ function mostrarBienvenida(nombre) {
     setTimeout(() => overlay.remove(), 500);
   }, 2500);
 }
+
+
+

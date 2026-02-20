@@ -1043,6 +1043,10 @@
                 </div>
                 <!-- Dropdown Resultados -->
                 <div id="listaResultadosClientes" class="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-gray-800 shadow-xl rounded-xl border border-gray-200 dark:border-gray-600 max-h-60 overflow-y-auto z-50 hidden"></div>
+                <button type="button" id="btnVerHistorialCliente" class="hidden mt-2 w-full text-sm bg-purple-100 text-purple-700 px-4 py-2 rounded-lg font-bold hover:bg-purple-200 transition-colors flex items-center justify-center gap-2">
+                  <span class="text-lg">📜</span>
+                  Ver Historial de este Cliente
+                </button>
                 <p id="infoClienteRNC" class="text-xs font-bold text-green-600 mt-1 hidden">✅ Cliente verificado</p>
               </div>
               <div class="md:col-span-2">
@@ -1148,6 +1152,31 @@
   </div>
 
   <!-- ========================================
+       📜 MODAL HISTORIAL POR CLIENTE (NUEVO)
+       ======================================== -->
+  <div id="modalHistorialCliente" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-[90] hidden animate-fade-in">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col animate-slide-in-up m-4">
+      <!-- Header -->
+      <div class="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center flex-shrink-0">
+        <div>
+          <h3 class="text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-3">
+            <span class="text-3xl">👤</span>
+            Historial del Cliente
+          </h3>
+          <p id="nombreClienteHistorial" class="text-gray-500 dark:text-gray-400 text-sm mt-1"></p>
+        </div>
+        <button onclick="cerrarModalHistorialCliente()" class="p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-200 transition-all" aria-label="Cerrar modal">
+          <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <!-- Contenido del Modal (lista) -->
+      <div class="p-6 overflow-y-auto" id="listaHistorialCliente">
+        <!-- La lista de facturas se generará aquí con JavaScript -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================
        📜 MODAL DE FACTURAS EMITIDAS (HISTORIAL)
        ======================================== -->
   <div id="modalFacturasEmitidas" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 hidden animate-fade-in">
@@ -1172,6 +1201,10 @@
           <div class="flex items-center gap-2">
             <label class="text-sm font-bold text-gray-600 dark:text-gray-300">Filtrar por Mes:</label>
             <input type="month" id="filtroMesFacturas" class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 text-sm focus:ring-2 focus:ring-purple-500 outline-none">
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="text-sm font-bold text-gray-600 dark:text-gray-300">Cliente:</label>
+            <select id="filtroClienteFacturas" class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 text-sm focus:ring-2 focus:ring-purple-500 outline-none max-w-[200px]"><option value="">Todos</option></select>
           </div>
           <div class="flex items-center gap-2 border-l border-gray-300 dark:border-gray-600 pl-4">
             <input type="checkbox" id="checkOcultarAnuladas" class="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500 cursor-pointer">

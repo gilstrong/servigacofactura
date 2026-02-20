@@ -1,7 +1,7 @@
 // Configuración
-const API_URL = (window.location.port === '5500' || window.location.port === '5501')
-    ? 'http://localhost:3000/api'
-    : 'https://servigacofactura.onrender.com/api';
+const API_BASE_URL = (window.location.port === '5500' || window.location.port === '5501')
+    ? 'http://localhost:3000'
+    : 'https://servigacofactura.onrender.com';
 
 // Obtener ID de la factura desde la URL
 const urlParams = new URLSearchParams(window.location.search);
@@ -18,7 +18,8 @@ if (facturaId) {
 
 async function cargarFactura() {
     try {
-        const response = await fetch(`${API_URL}/facturas/${facturaId}`);
+        // Nota: Asegúrate de que esta ruta exista en tu backend (apiRoutes.js)
+        const response = await fetch(`${API_BASE_URL}/api/facturas/${facturaId}`);
         const data = await response.json();
 
         if (data.success) {
@@ -319,7 +320,7 @@ async function guardarCambios(e) {
     };
 
     try {
-        const response = await fetch(`${API_URL}/facturas/${facturaId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos) });
+        const response = await fetch(`${API_BASE_URL}/api/facturas/${facturaId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos) });
         const result = await response.json();
         if (result.success) { mostrarMensaje('✅ Cambios guardados correctamente', 'success'); setTimeout(() => cargarFactura(), 1500); } else { mostrarMensaje('❌ ' + result.error, 'error'); }
     } catch (error) { console.error('Error:', error); mostrarMensaje('❌ Error de conexión', 'error'); }
@@ -380,7 +381,7 @@ async function imprimirFactura() {
             condicion: document.querySelector('input[name="condicion_venta"]:checked')?.value || 'contado'
         };
 
-        const response = await fetch(`${API_URL}/generar-factura-pdf`, {
+        const response = await fetch(`${API_BASE_URL}/api/generar-factura-pdf`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(datosFactura)

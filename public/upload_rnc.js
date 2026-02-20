@@ -16,7 +16,9 @@ const path = require("path");
 // 🔑 TU LLAVE DE SERVICIO (Descárgala de Firebase Console > Configuración del proyecto > Cuentas de servicio)
 // Asegúrate de que el archivo se llame exactamente 'serviceAccountKey.json'
 try {
-  const serviceAccount = require("../config/serviceAccountKey.json");
+  // Intentar ruta relativa estándar o fallback a la carpeta actual
+  const rutaCredenciales = fs.existsSync("../backend/src/serviceAccountKey.json") ? "../backend/src/serviceAccountKey.json" : "./serviceAccountKey.json";
+  const serviceAccount = require(rutaCredenciales);
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
     databaseURL: "https://servigaco-default-rtdb.firebaseio.com"

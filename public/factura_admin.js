@@ -13,6 +13,7 @@ const firebaseConfig = {
 
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
+const auth = firebase.auth();
 
 // CONFIGURACIÓN API (AUTO-DETECTAR PUERTO)
 const API_BASE_URL = (window.location.port === '5500' || window.location.port === '5501')
@@ -31,6 +32,14 @@ const ITBIS_RATE = 0.18;
 // 🚀 INICIALIZACIÓN
 // ============================================
 document.addEventListener('DOMContentLoaded', async () => {
+    // 🔒 SEGURIDAD: Verificar autenticación
+    auth.onAuthStateChanged(user => {
+        if (!user) {
+            alert("⚠️ Acceso denegado. Debes iniciar sesión como administrador.");
+            window.location.href = "index.html";
+        }
+    });
+
     const urlParams = new URLSearchParams(window.location.search);
     const id = urlParams.get('id');
 
@@ -317,7 +326,8 @@ async function guardarFactura() {
 
         const facturaData = {
             ...facturaActual,
-            tipo_comprobante: document.getElementById('tipoComprobante').value,
+            // Nota: Si es nueva, esto NO genera NCF automáticamente. Usar con precaución.
+            ncf: document.getElementById('ncf').value || 'BORRADOR', 
             condicion_venta: document.querySelector('input[name="condicionVenta"]:checked')?.value || 'contado',
             fecha_facturacion: document.getElementById('fechaFactura').value,
             fecha_vencimiento: document.getElementById('fechaVencimiento').value || null,
