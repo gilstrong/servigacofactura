@@ -8,10 +8,12 @@ const obtenerHistorial = async (req, res) => {
       return res.status(400).json({ error: "El ID del cliente es obligatorio." });
     }
 
-    // 2. Opciones de Paginación desde Query String
+    // 2. Opciones de Paginación y Filtro desde Query String
     const options = {
       limit: req.query.limit ? parseInt(req.query.limit, 10) : 10,
-      lastDocId: req.query.lastDocId || null
+      lastDocId: req.query.lastDocId || null,
+      fechaInicio: req.query.fechaInicio || null, // Nuevo
+      fechaFin: req.query.fechaFin || null      // Nuevo
     };
 
     // 3. Llamada al Servicio

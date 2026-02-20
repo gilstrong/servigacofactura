@@ -17,7 +17,7 @@ const db = firebase.database();
 // CONFIGURACIÓN API (AUTO-DETECTAR PUERTO)
 const API_BASE_URL = (window.location.port === '5500' || window.location.port === '5501')
   ? 'http://localhost:3000' // Si estamos en Live Server, apuntar al backend
-  : '';                     // Si estamos en el backend, usar ruta relativa
+  : 'https://servigacofactura.onrender.com'; // URL del backend en producción
 
 let facturaActual = {
     items: [],

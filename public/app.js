@@ -1,7 +1,7 @@
 // Configuración
 const API_URL = (window.location.port === '5500' || window.location.port === '5501')
     ? 'http://localhost:3000/api'
-    : '/api';
+    : 'https://servigacofactura.onrender.com/api';
 
 // Obtener ID de la factura desde la URL
 const urlParams = new URLSearchParams(window.location.search);
