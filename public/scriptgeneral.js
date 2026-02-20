@@ -1940,7 +1940,9 @@ window.seleccionarClienteBusqueda = function(rnc, nombre) {
   actualizarPreviewNCF();
 };
 
-async function buscarClientePorRNC() {
+async function buscarClientePorRNC(e) {
+  if (e && e.preventDefault) e.preventDefault(); // 🛑 Evita que el formulario se envíe y recargue la página
+
   const rncInput = document.getElementById('facturaClienteRNC');
   const nombreInput = document.getElementById('facturaClienteNombre');
   const infoLabel = document.getElementById('infoClienteRNC');
@@ -3836,6 +3838,3 @@ function mostrarBienvenida(nombre) {
     setTimeout(() => overlay.remove(), 500);
   }, 2500);
 }
-
-
-
