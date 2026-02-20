@@ -1,0 +1,54 @@
+const { db } = require("../config/firebase"); // Asegúrate que exporte admin.firestore()
+
+/**
+ * Obtiene el historial de facturas de un cliente con paginación.
+ * @param {string} clienteId - El ID del cliente a buscar.
+ * @param {object} options - Opciones de paginación.
+ * @param {number} options.limit - Cantidad de documentos a traer.
+ * @param {string|null} options.lastDocId - El ID del último documento de la página anterior.
+ * @returns {Promise<{facturas: Array, lastDocId: string|null, hasMore: boolean}>}
+ */
+const getHistorialPorCliente = async (clienteId, { limit = 10, lastDocId = null }) => {
+  // 1. Construir la consulta base
+  let query = db.collection('facturas')
+    .where('clienteId', '==', clienteId)
+    .orderBy('createdAt', 'desc') // Ordenar por fecha de creación, más recientes primero
+    .limit(limit);
+
+  // 2. Aplicar el cursor para paginación
+  if (lastDocId) {
+    const lastDocSnapshot = await db.collection('facturas').doc(lastDocId).get();
+    if (!lastDocSnapshot.exists) {
+      throw new Error("El documento para paginación no existe.");
+    }
+    query = query.startAfter(lastDocSnapshot);
+  }
+
+  // 3. Ejecutar la consulta
+  const snapshot = await query.get();
+
+  // 4. Procesar y formatear los resultados
+  if (snapshot.empty) {
+    return { facturas: [], lastDocId: null, hasMore: false };
+  }
+
+  const facturas = snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
+
+  // 5. Determinar si hay más páginas
+  // Si el número de documentos devueltos es igual al límite, es probable que haya más.
+  const hasMore = facturas.length === limit;
+  const newLastDocId = hasMore ? facturas[facturas.length - 1].id : null;
+
+  return {
+    facturas,
+    lastDocId: newLastDocId,
+    hasMore
+  };
+};
+
+module.exports = {
+  getHistorialPorCliente
+};
