@@ -2115,14 +2115,32 @@ async function actualizarPreviewNCF() {
 // ✅ FIX PRINCIPAL: abrirModalFacturacion
 // Normaliza items de Firebase (objeto → array) antes de todo
 // ============================================
-function abrirModalFacturacion(idCotizacion) {
+function abrirModalFacturacion(idCotizacion = null) {
   if (!verificarPermisoAdmin()) return;
 
-  const cotOriginal = todasLasCotizaciones.find(c => c.id === idCotizacion);
-  if (!cotOriginal) return;
-
-  // Clonar cotización profundamente
-  cotizacionAFacturar = JSON.parse(JSON.stringify(cotOriginal));
+  // CASO 1: Facturar una cotización guardada (viene con ID)
+  if (idCotizacion) {
+    const cotOriginal = todasLasCotizaciones.find(c => c.id === idCotizacion);
+    if (!cotOriginal) return;
+    // Clonar cotización profundamente
+    cotizacionAFacturar = JSON.parse(JSON.stringify(cotOriginal));
+  } 
+  // CASO 2: Facturar la cotización actual en pantalla (Array Global)
+  else {
+    if (!cotizacion || cotizacion.length === 0) {
+      mostrarNotificacion('No hay items en la cotización para facturar', 'warning');
+      return;
+    }
+    console.log("🚀 Facturando cotización actual (Memoria):", cotizacion);
+    
+    // Construimos el objeto temporal con la estructura que espera el modal
+    cotizacionAFacturar = {
+      id: null, // Es nueva, no tiene ID de base de datos aún
+      nombre: nombreCotizacionActiva || '',
+      items: JSON.parse(JSON.stringify(cotizacion)), // Copia profunda del array global
+      fecha: new Date().toISOString()
+    };
+  }
 
   // ✅ FIX: Firebase guarda arrays como objetos con claves numéricas.
   // Siempre normalizar a array real antes de continuar.
