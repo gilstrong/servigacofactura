@@ -2147,12 +2147,26 @@ function abrirModalFacturacion(idCotizacion = null) {
   if (cotizacionAFacturar.items && !Array.isArray(cotizacionAFacturar.items)) {
     cotizacionAFacturar.items = Object.values(cotizacionAFacturar.items);
   }
-  if (!cotizacionAFacturar.items) {
-    cotizacionAFacturar.items = [];
+  
+  // 🚨 FIX: Si la cotización viene sin items (ej: Tesis o Resumen), crear item desde descripción y total
+  if (!cotizacionAFacturar.items || cotizacionAFacturar.items.length === 0) {
+    const total = parseFloat(cotizacionAFacturar.total || 0);
+    if (total > 0) {
+      cotizacionAFacturar.items = [{
+        cantidad: 1,
+        nombre: "Servicio Cotizado",
+        descripcion: cotizacionAFacturar.descripcion || "Detalle de cotización",
+        precioUnitario: total,
+        precio: total
+      }];
+    } else {
+      cotizacionAFacturar.items = [];
+    }
   }
 
   // Pre-llenar datos del modal
-  document.getElementById('facturaClienteNombre').value = cotizacionAFacturar.nombre;
+  // 🚨 FIX: No usar nombre de cotización como Razón Social. Debe venir del RNC.
+  document.getElementById('facturaClienteNombre').value = '';
   document.getElementById('facturaClienteRNC').value = '';
   document.getElementById('facturaFecha').valueAsDate = new Date();
   document.getElementById('facturaAbono').value = '';
@@ -2521,9 +2535,9 @@ function renderizarFacturas() {
         etiquetaEstado = '<span class="text-xs text-purple-600 dark:text-purple-400 font-bold border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/30 px-2 py-1 rounded">↩️ Nota Crédito</span>';
     } else {
         etiquetaEstado = `
-          <button type="button" onclick="abrirModalEditarFactura('${f.id}')" class="text-xs bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded border border-yellow-600 transition-colors font-bold mr-2 shadow-sm">✏️ Editar</button>
-          <button type="button" onclick="imprimirFactura('${f.id}')" class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded border border-blue-700 transition-colors font-bold mr-2 shadow-sm">🖨️ Imprimir</button>
-          <button type="button" onclick="anularFactura('${f.id}')" class="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1 rounded border border-red-200 transition-colors font-bold">🚫 Anular</button>
+          <a href="factura_admin.html?id=${f.id}" target="_blank" class="text-xs bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-lg border border-yellow-600/50 transition-colors font-bold shadow-sm inline-flex items-center gap-1 mr-2">✏️ Editar</a>
+          <button type="button" onclick="imprimirFactura('${f.id}')" class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg border-blue-700/50 transition-colors font-bold shadow-sm mr-2">🖨️ Imprimir</button>
+          <button type="button" onclick="anularFactura('${f.id}')" class="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded-lg border border-red-200/50 transition-colors font-bold">🚫 Anular</button>
         `;
     }
 
@@ -2591,7 +2605,14 @@ async function imprimirFactura(idFactura) {
       body: JSON.stringify(datosFactura)
     });
 
-    if (!response.ok) throw new Error('Error generando PDF desde el servidor');
+    if (response.status === 503) {
+      throw new Error("⚠️ El servidor se está iniciando (503). Intenta de nuevo en breve.");
+    }
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || 'Error generando PDF desde el servidor');
+    }
 
     const blob = await response.blob();
     const url = window.URL.createObjectURL(blob);

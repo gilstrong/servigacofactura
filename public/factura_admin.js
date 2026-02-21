@@ -61,11 +61,13 @@ function inicializarEventos() {
     document.querySelectorAll('input[name="condicionVenta"]').forEach(radio => {
         radio.addEventListener('change', (e) => {
             const divVenc = document.getElementById('divVencimiento');
-            if (e.target.value === 'Crédito') {
+            const val = e.target.value;
+            if (val.startsWith('credito')) {
                 divVenc.classList.remove('hidden');
-                // Calcular vencimiento a 30 días por defecto
+                // Calcular vencimiento (15 o 30 días)
+                const dias = val === 'credito_15' ? 15 : 30;
                 const fecha = new Date(document.getElementById('fechaFactura').value);
-                fecha.setDate(fecha.getDate() + 30);
+                fecha.setDate(fecha.getDate() + dias);
                 document.getElementById('fechaVencimiento').valueAsDate = fecha;
             } else {
                 divVenc.classList.add('hidden');
@@ -123,9 +125,21 @@ async function cargarFactura(id) {
         document.getElementById('fechaFactura').value = data.fecha_facturacion ? data.fecha_facturacion.split('T')[0] : new Date().toISOString().split('T')[0];
         
         // Condición de Venta (Radio)
-        const cond = data.condicion_venta || 'contado';
+        let cond = data.condicion_venta || 'contado';
+        if (cond === 'credito') cond = 'credito_30'; // Compatibilidad con facturas viejas
         const radio = document.querySelector(`input[name="condicionVenta"][value="${cond}"]`);
-        if (radio) radio.checked = true;
+        if (radio) {
+            radio.checked = true;
+        }
+
+        // Mostrar y poblar fecha de vencimiento si es a crédito
+        const divVenc = document.getElementById('divVencimiento');
+        if (cond.startsWith('credito')) {
+            divVenc.classList.remove('hidden');
+            if (data.fecha_vencimiento) {
+                document.getElementById('fechaVencimiento').value = data.fecha_vencimiento.split('T')[0];
+            }
+        }
         
         // Cliente
         document.getElementById('clienteRNC').value = data.rnc_cliente || '';
@@ -383,20 +397,35 @@ window.imprimirFactura = async function() {
     }
 
     try {
-        // Recopilar datos actuales de la factura
+        // Recopilar datos actuales de la factura desde el formulario
         const items = [];
         document.querySelectorAll('#tablaProductos tr').forEach(row => {
             const inputs = row.querySelectorAll('input');
             items.push({
                 cantidad: parseFloat(inputs[0].value),
                 nombre: inputs[2].value, // Descripción como nombre
+                descripcion: inputs[2].value,
                 precioUnitario: parseFloat(inputs[3].value),
                 precio: parseFloat(row.querySelector('.row-total').textContent.replace(/[^0-9.-]+/g,""))
             });
         });
 
+        // Traducir el valor interno a texto legible para el PDF
+        const condicionValue = document.querySelector('input[name="condicionVenta"]:checked')?.value || 'contado';
+        let condicionTexto;
+        switch (condicionValue) {
+            case 'credito_15':
+                condicionTexto = 'Crédito a 15 días';
+                break;
+            case 'credito_30':
+                condicionTexto = 'Crédito a 30 días';
+                break;
+            default:
+                condicionTexto = 'Contado';
+        }
+
         const datosFactura = {
-            id: facturaActual.id, // Enviar ID para actualizar Firebase
+            id: facturaActual.id,
             ncf: document.getElementById('ncf').value || 'BORRADOR',
             fecha: document.getElementById('fechaFactura').value,
             vencimiento: document.getElementById('fechaVencimiento').value,
@@ -409,7 +438,7 @@ window.imprimirFactura = async function() {
             subtotal: facturaActual.totales.exento + facturaActual.totales.gravado,
             impuestos: [{ nombre: 'ITBIS (18%)', monto: facturaActual.totales.itbis }],
             total: facturaActual.totales.total,
-            condicion: document.querySelector('input[name="condicionVenta"]:checked')?.value || 'contado'
+            condicion: condicionTexto // Se envía el texto legible
         };
 
         const response = await fetch(`${API_BASE_URL}/api/generar-factura-pdf`, {
@@ -418,7 +447,7 @@ window.imprimirFactura = async function() {
             body: JSON.stringify(datosFactura)
         });
 
-        if (!response.ok) throw new Error('Error en el servidor');
+        if (!response.ok) throw new Error('Error en el servidor al generar el PDF');
 
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
@@ -439,5 +468,4 @@ window.imprimirFactura = async function() {
             btn.innerHTML = originalText;
         }
     }
-
 }
