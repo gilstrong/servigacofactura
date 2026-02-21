@@ -2535,7 +2535,7 @@ function renderizarFacturas() {
         etiquetaEstado = '<span class="text-xs text-purple-600 dark:text-purple-400 font-bold border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/30 px-2 py-1 rounded">↩️ Nota Crédito</span>';
     } else {
         etiquetaEstado = `
-          <a href="factura_admin.html?id=${f.id}" target="_blank" class="text-xs bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-lg border border-yellow-600/50 transition-colors font-bold shadow-sm inline-flex items-center gap-1 mr-2">✏️ Editar</a>
+          <button type="button" onclick="abrirModalEditarFactura('${f.id}')" class="text-xs bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-lg border border-yellow-600/50 transition-colors font-bold shadow-sm mr-2">✏️ Editar</button>
           <button type="button" onclick="imprimirFactura('${f.id}')" class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg border-blue-700/50 transition-colors font-bold shadow-sm mr-2">🖨️ Imprimir</button>
           <button type="button" onclick="anularFactura('${f.id}')" class="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded-lg border border-red-200/50 transition-colors font-bold">🚫 Anular</button>
         `;
