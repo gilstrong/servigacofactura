@@ -61,7 +61,7 @@ function inicializarEventos() {
     document.querySelectorAll('input[name="condicionVenta"]').forEach(radio => {
         radio.addEventListener('change', (e) => {
             const divVenc = document.getElementById('divVencimiento');
-            if (e.target.value === 'credito') {
+            if (e.target.value === 'Crédito') {
                 divVenc.classList.remove('hidden');
                 // Calcular vencimiento a 30 días por defecto
                 const fecha = new Date(document.getElementById('fechaFactura').value);
@@ -439,4 +439,5 @@ window.imprimirFactura = async function() {
             btn.innerHTML = originalText;
         }
     }
+
 }
