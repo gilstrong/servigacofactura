@@ -63,6 +63,19 @@ const generarPDF = async (req, res) => {
         const logoSrc = logoBase64Cache; // Usar variable en memoria (Instantáneo)
         const { ncf, fecha, cliente, items, subtotal, impuestos, total, tituloDocumento, condicion } = data;
         
+        const formatearCondicion = (valor) => {
+            if (!valor) return "Contado";
+        
+            if (valor.startsWith("credito_")) {
+                const dias = valor.split("_")[1];
+                return `Crédito a ${dias} días`;
+            }
+        
+            return "Contado";
+        };
+        
+        const condicionFormateada = formatearCondicion(condicion);
+
         // Validación de seguridad para evitar crash si items es undefined
         const listaItems = Array.isArray(items) ? items : [];
         const datosCliente = cliente || {};
@@ -163,7 +176,7 @@ const generarPDF = async (req, res) => {
                     <h1 class="invoice-title">${tituloDocumento || 'FACTURA'}</h1>
                     <div class="meta-item"><span class="meta-label">NCF:</span><span class="meta-value" style="color: #2563eb;">${ncf || 'N/A'}</span></div>
                     <div class="meta-item"><span class="meta-label">Fecha:</span><span class="meta-value">${fecha}</span></div>
-                    <div class="meta-item"><span class="meta-label">Condición:</span><span class="meta-value" style="text-transform: capitalize;">${condicion || 'Contado'}</span></div>
+                    <div class="meta-item"><span class="meta-label">Condición:</span><span class="meta-value" style="text-transform: capitalize;">${condicionFormateada}</span></div>
                 </div>
             </div>
 
