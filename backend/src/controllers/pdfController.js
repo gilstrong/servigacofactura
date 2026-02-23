@@ -225,11 +225,7 @@ const generarPDF = async (req, res) => {
                         <td class="total-final-label">TOTAL:</td>
                         <td class="total-final-value">RD$ ${parseFloat(total || 0).toLocaleString('es-DO', {minimumFractionDigits: 2})}</td>
                     </tr>
-                    ${parseFloat(abono || 0) > 0 ? `
-                    <tr>
-                        <td class="label">Abonado:</td>
-                        <td class="value">RD$ ${parseFloat(abono || 0).toLocaleString('es-DO', {minimumFractionDigits: 2})}</td>
-                    </tr>
+                    ${saldoPendiente > 0 ? `
                     <tr class="total-row">
                         <td class="total-final-label" style="${estiloPendienteLabel}">PENDIENTE:</td>
                         <td class="total-final-value" style="${estiloPendienteValor}">RD$ ${saldoPendiente.toLocaleString('es-DO', {minimumFractionDigits: 2})}</td>
