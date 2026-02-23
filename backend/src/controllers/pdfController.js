@@ -59,9 +59,9 @@ const generarPDF = async (req, res) => {
         console.log("🔵 [PDF] Solicitud recibida. Datos:", req.body ? "OK" : "VACÍO");
         const data = req.body || {};
         
-        // 1. Preparar datos y Logo
+        // 1. Preparar datos, Logo y Abono
         const logoSrc = logoBase64Cache; // Usar variable en memoria (Instantáneo)
-        const { ncf, fecha, cliente, items, subtotal, impuestos, total, tituloDocumento, condicion } = data;
+        const { ncf, fecha, cliente, items, subtotal, impuestos, total, tituloDocumento, condicion, abono, vencimiento } = data;
         
         const formatearCondicion = (valor) => {
             if (!valor) return "Contado";
@@ -75,6 +75,22 @@ const generarPDF = async (req, res) => {
         };
         
         const condicionFormateada = formatearCondicion(condicion);
+
+        // Lógica para saldo pendiente y estado de vencimiento
+        const saldoPendiente = parseFloat(total || 0) - parseFloat(abono || 0);
+        let estaVencida = false;
+        if (vencimiento && saldoPendiente > 0) {
+            const hoyString = new Date().toISOString().split('T')[0]; // Formato YYYY-MM-DD
+            // Comparamos directamente las cadenas de fecha en formato YYYY-MM-DD
+            if (vencimiento < hoyString) {
+                estaVencida = true;
+            }
+        }
+
+        // Definir estilos condicionales para el saldo pendiente
+        const estiloPendienteLabel = `color: #dc2626; ${estaVencida ? 'font-weight: 900; font-size: 16px;' : ''}`;
+        const estiloPendienteValor = `color: #dc2626; ${estaVencida ? 'font-weight: 900; font-size: 20px;' : ''}`;
+
 
         // Validación de seguridad para evitar crash si items es undefined
         const listaItems = Array.isArray(items) ? items : [];
@@ -209,6 +225,16 @@ const generarPDF = async (req, res) => {
                         <td class="total-final-label">TOTAL:</td>
                         <td class="total-final-value">RD$ ${parseFloat(total || 0).toLocaleString('es-DO', {minimumFractionDigits: 2})}</td>
                     </tr>
+                    ${parseFloat(abono || 0) > 0 ? `
+                    <tr>
+                        <td class="label">Abonado:</td>
+                        <td class="value">RD$ ${parseFloat(abono || 0).toLocaleString('es-DO', {minimumFractionDigits: 2})}</td>
+                    </tr>
+                    <tr class="total-row">
+                        <td class="total-final-label" style="${estiloPendienteLabel}">PENDIENTE:</td>
+                        <td class="total-final-value" style="${estiloPendienteValor}">RD$ ${saldoPendiente.toLocaleString('es-DO', {minimumFractionDigits: 2})}</td>
+                    </tr>
+                    ` : ''}
                 </table>
             </div>
 
