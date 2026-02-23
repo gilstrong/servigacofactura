@@ -151,6 +151,9 @@ const generarPDF = async (req, res) => {
         const listaItems = Array.isArray(items) ? items : [];
         const datosCliente = cliente || {};
 
+        // Determinar si hay ITBIS para mostrar la columna
+        const mostrarItbis = (impuestos || []).some(i => parseFloat(i.monto) > 0);
+
         // HTML para las observaciones (solo si existen)
         const observacionesHTML = observaciones ? `
             <div class="notes-section">
@@ -160,7 +163,10 @@ const generarPDF = async (req, res) => {
         ` : '';
 
         // 2. Construir HTML
-        const rows = listaItems.map((item, i) => `
+        const rows = listaItems.map((item, i) => {
+            const precioTotalItem = parseFloat(item.precio || 0);
+            const itbisItem = mostrarItbis ? precioTotalItem * 0.18 : 0;
+            return `
             <tr class="${i % 2 === 0 ? 'bg-gray' : ''}">
                 <td class="col-desc">
                     <div class="item-name">${item.nombre || 'Item'}</div>
@@ -168,9 +174,10 @@ const generarPDF = async (req, res) => {
                 </td>
                 <td class="col-center">${item.cantidad || 0}</td>
                 <td class="col-right">RD$ ${parseFloat(item.precioUnitario || 0).toLocaleString('es-DO', {minimumFractionDigits: 2})}</td>
-                <td class="col-right font-bold">RD$ ${parseFloat(item.precio || 0).toLocaleString('es-DO', {minimumFractionDigits: 2})}</td>
+                ${mostrarItbis ? `<td class="col-right">RD$ ${itbisItem.toLocaleString('es-DO', {minimumFractionDigits: 2})}</td>` : ''}
+                <td class="col-right font-bold">RD$ ${precioTotalItem.toLocaleString('es-DO', {minimumFractionDigits: 2})}</td>
             </tr>
-        `).join('');
+        `}).join('');
 
         const impuestosHTML = (impuestos || []).map(imp => `
             <tr class="tax-row">
@@ -279,6 +286,7 @@ const generarPDF = async (req, res) => {
                         <th class="col-desc">Descripción</th>
                         <th class="col-center">Cant.</th>
                         <th class="col-right">Precio</th>
+                        ${mostrarItbis ? '<th class="col-right">ITBIS</th>' : ''}
                         <th class="col-right">Total</th>
                     </tr>
                 </thead>
