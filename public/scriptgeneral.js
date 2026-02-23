@@ -3064,7 +3064,7 @@ window.guardarEdicionFactura = async function(id) {
         metodo_pago: document.querySelector('select[name="metodo_pago_modal"]').value,
         abono: parseFloat(document.querySelector('input[name="abono_modal"]').value) || 0,
         referencia: document.querySelector('input[name="referencia_modal"]').value,
-        observaciones: document.querySelector('textarea[name="observaciones_modal"]').value
+        observaciones: document.querySelector('textarea[name="observaciones_modal"]')?.value || ''
     };
 
     try {
