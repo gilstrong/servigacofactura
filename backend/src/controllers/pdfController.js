@@ -61,7 +61,7 @@ const generarPDF = async (req, res) => {
         
         // 1. Preparar datos, Logo y Abono
         const logoSrc = logoBase64Cache; // Usar variable en memoria (Instantáneo)
-        const { ncf, fecha, cliente, items, subtotal, impuestos, total, tituloDocumento, condicion, abono, vencimiento } = data;
+        const { ncf, fecha, cliente, items, subtotal, impuestos, total, tituloDocumento, condicion, abono, vencimiento, observaciones } = data;
         
         const formatearCondicion = (valor) => {
             if (!valor) return "Contado";
@@ -151,6 +151,14 @@ const generarPDF = async (req, res) => {
         const listaItems = Array.isArray(items) ? items : [];
         const datosCliente = cliente || {};
 
+        // HTML para las observaciones (solo si existen)
+        const observacionesHTML = observaciones ? `
+            <div class="notes-section">
+                <div class="notes-title">Observaciones:</div>
+                <p class="notes-text">${observaciones.replace(/\n/g, '<br>')}</p>
+            </div>
+        ` : '';
+
         // 2. Construir HTML
         const rows = listaItems.map((item, i) => `
             <tr class="${i % 2 === 0 ? 'bg-gray' : ''}">
@@ -229,6 +237,11 @@ const generarPDF = async (req, res) => {
                 .total-final-label { font-size: 14px; font-weight: 900; color: #1e293b; }
                 .total-final-value { font-size: 18px; font-weight: 900; color: #2563eb; }
 
+                /* Notes */
+                .notes-section { margin-top: 20px; margin-bottom: 20px; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; background-color: #f8fafc; }
+                .notes-title { font-weight: bold; font-size: 11px; text-transform: uppercase; color: #64748b; margin-bottom: 5px; }
+                .notes-text { font-size: 12px; color: #475569; margin: 0; white-space: pre-wrap; }
+
                 /* Footer */
                 .footer { position: fixed; bottom: 40px; left: 40px; right: 40px; text-align: center; font-size: 10px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 15px; }
             </style>
@@ -240,8 +253,8 @@ const generarPDF = async (req, res) => {
                     <p>
                         <strong>CENTRO DE COPIADO S & C, SRL</strong><br>
                         RNC: 130-84851-3<br>
-                        Email: servigacosy@gmail.com
-                        C/CORREA Y CIDRÓN, No. 22, PLAZA CIUDADELA 
+                        <br>Email: servigacosy@gmail.com<br>
+                        <br>C/CORREA Y CIDRÓN, No. 22, PLAZA CIUDADELA<br>
                     </p>
                 </div>
                 <div class="invoice-details">
@@ -271,6 +284,8 @@ const generarPDF = async (req, res) => {
                 </thead>
                 <tbody>${rows}</tbody>
             </table>
+
+            ${observacionesHTML}
 
             <div class="totals-container">
                 <table class="totals-table">
