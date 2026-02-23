@@ -2521,6 +2521,18 @@ function renderizarFacturas() {
     const esAnulada = f.estado === 'anulada';
     const esNotaCredito = f.tipo_documento === 'Nota de Crédito';
     
+    // Nueva lógica para facturas vencidas
+    const saldoPendiente = (parseFloat(f.total) || 0) - (parseFloat(f.abono) || 0);
+    let estaVencida = false;
+    if (f.fecha_vencimiento && !esAnulada && saldoPendiente > 0) {
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0); // Para comparar solo fechas, ignorando la hora
+        const fechaVencimiento = new Date(f.fecha_vencimiento);
+        if (fechaVencimiento < hoy) {
+            estaVencida = true;
+        }
+    }
+
     let estiloContenedor = "bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 flex justify-between items-center shadow-sm hover:shadow-md transition-shadow";
     let estiloTexto = "font-bold text-gray-800 dark:text-gray-200";
     let estiloMonto = esNotaCredito ? 'text-red-600' : 'text-gray-800 dark:text-white';
@@ -2531,17 +2543,26 @@ function renderizarFacturas() {
         estiloContenedor = "bg-gray-100 dark:bg-gray-900 p-4 rounded-xl border border-gray-200 dark:border-gray-800 flex justify-between items-center opacity-60 grayscale";
         estiloTexto = "font-bold text-gray-500 line-through";
         estiloMonto = "text-gray-400 line-through";
+    } else if (estaVencida) {
+        etiquetaEstado = `
+          <span class="text-xs text-red-800 dark:text-red-200 font-bold bg-red-200 dark:bg-red-900/50 border border-red-300 dark:border-red-700 px-3 py-1.5 rounded-lg shadow-sm animate-pulse">🚨 VENCIDA</span>
+          <button type="button" onclick="imprimirFactura('${f.id}')" class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg border-blue-700/50 transition-colors font-bold shadow-sm">🖨️ Imprimir</button>
+        `;
+        estiloContenedor = "bg-red-100 dark:bg-red-900/40 p-4 rounded-xl border-2 border-red-300 dark:border-red-700 flex justify-between items-center shadow-lg hover:shadow-xl transition-all";
+        estiloTexto = "font-bold text-red-900 dark:text-red-200";
+        estiloMonto = "text-red-700 dark:text-red-300";
     } else if (esNotaCredito) {
         etiquetaEstado = '<span class="text-xs text-purple-600 dark:text-purple-400 font-bold border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/30 px-2 py-1 rounded">↩️ Nota Crédito</span>';
     } else {
         etiquetaEstado = `
-          <button type="button" onclick="abrirModalEditarFactura('${f.id}')" class="text-xs bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded border border-yellow-600 transition-colors font-bold mr-2 shadow-sm">✏️ Editar</button>
-          <button type="button" onclick="imprimirFactura('${f.id}')" class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded border border-blue-700 transition-colors font-bold mr-2 shadow-sm">🖨️ Imprimir</button>
-          <button type="button" onclick="anularFactura('${f.id}')" class="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1 rounded border border-red-200 transition-colors font-bold">🚫 Anular</button>
+          <button type="button" onclick="abrirModalEditarFactura('${f.id}')" class="text-xs bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-lg border border-yellow-600/50 transition-colors font-bold shadow-sm mr-2">✏️ Editar</button>
+          <button type="button" onclick="imprimirFactura('${f.id}')" class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg border-blue-700/50 transition-colors font-bold shadow-sm mr-2">🖨️ Imprimir</button>
+          <button type="button" onclick="anularFactura('${f.id}')" class="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded-lg border border-red-200/50 transition-colors font-bold">🚫 Anular</button>
         `;
     }
 
     const ncfSafe = f.ncf ? f.ncf.replace(/['"]/g, "") : "SIN-NCF";
+    const saldoPendienteTexto = estaVencida ? `<p class="text-xs font-bold text-red-800 dark:text-red-300 mt-1">Pendiente: RD$${saldoPendiente.toFixed(2)}</p>` : '';
 
     return `
       <div class="${estiloContenedor}">
@@ -2555,6 +2576,7 @@ function renderizarFacturas() {
         </div>
         <div class="text-right">
           <p class="text-lg font-black ${estiloMonto}">RD$${monto.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</p>
+          ${saldoPendienteTexto}
           <div class="mt-1 flex items-center justify-end gap-2">
             ${etiquetaEstado}
           </div>
@@ -3028,12 +3050,7 @@ window.guardarEdicionFactura = async function(id) {
         mostrarNotificacion('✅ Factura actualizada', 'success');
         cerrarModalEditarFactura();
         if (!document.getElementById('modalFacturasEmitidas').classList.contains('hidden')) {
-            const filtro = document.getElementById('filtroMesFacturas').value;
-            if (filtro) {
-                cargarFacturasPorMes();
-            } else {
-                abrirModalFacturas(); 
-            }
+            abrirModalFacturas(); 
         }
     } catch (e) {
         mostrarNotificacion('Error al guardar: ' + e.message, 'error');
@@ -3053,78 +3070,63 @@ async function generarReporte607() {
     return;
   }
 
-  mostrarNotificacion('⏳ Generando reporte DGII 607...', 'info');
+  mostrarNotificacion('⏳ Descargando datos del mes...', 'info');
 
   const start = filtro + "-01";
   const end = filtro + "-31T23:59:59";
 
-  try {
-    const snapshot = await db.ref("facturas")
-      .orderByChild("fecha_facturacion")
-      .startAt(start).endAt(end)
-      .once("value");
-    
-    const dataRaw = snapshot.val() || {};
-    // Filtrar anuladas para no reportar ingresos falsos
-    const facturas = Object.values(dataRaw).filter(f => f.estado !== 'anulada');
+  const snapshot = await db.ref("facturas")
+    .orderByChild("fecha_facturacion")
+    .startAt(start).endAt(end)
+    .once("value");
+  
+  const dataRaw = snapshot.val() || {};
+  const facturasFiltradas = Object.values(dataRaw);
 
-    if (facturas.length === 0) {
-      mostrarNotificacion('No hay facturas válidas para este mes', 'warning');
-      return;
-    }
-
-    const data = facturas.map(f => {
-      const rncLimpio = (f.rnc_cliente || '').replace(/[^0-9]/g, '');
-      const tipoId = rncLimpio.length === 9 ? 1 : 2;
-      
-      // Fecha YYYYMMDD
-      const fechaRaw = f.fecha_facturacion || '';
-      const fechaFmt = fechaRaw.slice(0, 10).replace(/-/g, '');
-
-      // Cálculos
-      const total = parseFloat(f.total || 0);
-      let itbis = parseFloat(f.itbis_total || 0);
-      
-      // Fallback cálculo ITBIS si no existe
-      if (!f.itbis_total && (f.ncf.startsWith('B01') || f.ncf.startsWith('B02'))) {
-         itbis = total - (total / 1.18);
-      }
-      
-      const montoFacturado = total - itbis;
-
-      return {
-        "RNC o Cédula": rncLimpio,
-        "Tipo Id": tipoId,
-        "Tipo Bienes y Servicios Comprados": "",
-        "NCF": f.ncf || "",
-        "NCF Modificado": f.ncf_modificado || "",
-        "Fecha Comprobante": fechaFmt,
-        "Fecha Retención": "",
-        "Monto Facturado": montoFacturado.toFixed(2),
-        "ITBIS Facturado": itbis.toFixed(2),
-        "ITBIS Retenido por Terceros": "0.00",
-        "ITBIS Percibido": "0.00",
-        "Retención Renta por Terceros": "0.00",
-        "ISR Percibido": "0.00",
-        "Impuesto Selectivo al Consumo": "0.00",
-        "Otros Impuestos/Tasas": "0.00",
-        "Monto Propina Legal": "0.00"
-      };
-    });
-
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Reporte 607");
-    
-    const nombreArchivo = `DGII_607_${filtro.replace(/-/g, '')}.xlsx`;
-    XLSX.writeFile(workbook, nombreArchivo);
-    
-    mostrarNotificacion('✅ Reporte 607 generado correctamente', 'success');
-
-  } catch (error) {
-    console.error(error);
-    mostrarNotificacion('Error generando reporte', 'error');
+  if (facturasFiltradas.length === 0) {
+    mostrarNotificacion('No hay datos para exportar en este mes', 'warning');
+    return;
   }
+
+  const data = facturasFiltradas.map(f => {
+    const rnc = f.rnc_cliente || '';
+    const tipoId = rnc.length === 9 ? 1 : 2; 
+    const fecha = f.fecha_facturacion.slice(0, 10);
+    const total = parseFloat(f.total || 0);
+    const ncfModificado = f.ncf_modificado || '';
+    const motivo = f.motivo_anulacion || '';
+    
+    const esGravado = f.ncf.startsWith('B01') || f.ncf.startsWith('B02');
+    const itbis = esGravado ? (total - (total / 1.18)) : 0;
+    const monto = total - itbis;
+
+    return {
+      "RNC/CEDULA": rnc,
+      "TIPO ID": tipoId,
+      "NCF": f.ncf,
+      "NCF MODIFICADO": ncfModificado || " ",
+      "FECHA COMPROBANTE": fecha,
+      "MONTO FACTURADO": parseFloat(monto.toFixed(2)),
+      "ITBIS FACTURADO": parseFloat(itbis.toFixed(2)),
+      "TOTAL": parseFloat(total.toFixed(2)),
+      "ESTADO": f.estado === 'anulada' ? 'ANULADA' : 'VIGENTE',
+      "MOTIVO ANULACION": motivo || " "
+    };
+  });
+
+  const worksheet = XLSX.utils.json_to_sheet(data);
+  
+  const wscols = [
+    {wch: 15}, {wch: 8}, {wch: 13}, {wch: 15}, {wch: 12},
+    {wch: 15}, {wch: 15}, {wch: 15}, {wch: 30}
+  ];
+  worksheet['!cols'] = wscols;
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Reporte 607");
+  XLSX.writeFile(workbook, `Reporte_607_${filtro}.xlsx`);
+  
+  mostrarNotificacion('Reporte 607 (Excel) descargado', 'success');
 }
 
 async function generarReporteDiario() {
@@ -3235,16 +3237,14 @@ async function generarReporteIT1(formato = 'excel') {
     let montoBase = total;
     let esExento = false;
 
-    // Usar el ITBIS real guardado en la factura (por si fue editada)
-    if (f.itbis_total !== undefined && f.itbis_total !== null) {
-        itbisCalculado = parseFloat(f.itbis_total);
+    if (ncfPrefix === 'B14') {
+      esExento = true;
+      itbisCalculado = 0;
+      montoBase = total;
     } else {
-        // Fallback solo si no existe el dato guardado
-        if (ncfPrefix !== 'B14') itbisCalculado = total - (total / 1.18);
+      itbisCalculado = total - (total / 1.18);
+      montoBase = total - itbisCalculado;
     }
-    
-    montoBase = total - itbisCalculado;
-    if (ncfPrefix === 'B14') esExento = true;
 
     resumen.totalOperaciones += total;
     

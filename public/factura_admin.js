@@ -438,7 +438,8 @@ window.imprimirFactura = async function() {
             subtotal: facturaActual.totales.exento + facturaActual.totales.gravado,
             impuestos: [{ nombre: 'ITBIS (18%)', monto: facturaActual.totales.itbis }],
             total: facturaActual.totales.total,
-            condicion: condicionTexto // Se envía el texto legible
+            condicion: condicionTexto, // Se envía el texto legible
+            abono: facturaActual.abono || 0
         };
 
         const response = await fetch(`${API_BASE_URL}/api/generar-factura-pdf`, {
