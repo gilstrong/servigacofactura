@@ -45,6 +45,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Configurar fecha hoy por defecto
     document.getElementById('fechaFactura').valueAsDate = new Date();
+    if (document.getElementById('observacionesFactura')) document.getElementById('observacionesFactura').value = '';
 
     if (id) {
         await cargarFactura(id);
@@ -145,6 +146,7 @@ async function cargarFactura(id) {
         document.getElementById('clienteRNC').value = data.rnc_cliente || '';
         document.getElementById('clienteNombre').value = data.razon_social || '';
         document.getElementById('clienteTelefono').value = data.telefono || '';
+        if (document.getElementById('observacionesFactura')) document.getElementById('observacionesFactura').value = data.observaciones || '';
         
         // Items
         const items = Array.isArray(data.items) ? data.items : Object.values(data.items || {});
@@ -358,6 +360,7 @@ async function guardarFactura() {
             metodo_pago: document.getElementById('metodoPago').value,
             banco: document.getElementById('bancoDestino').value,
             referencia: document.getElementById('referenciaPago').value,
+            observaciones: document.getElementById('observacionesFactura')?.value || '',
             
             items: items,
             total: facturaActual.totales.total,
@@ -444,7 +447,8 @@ window.imprimirFactura = async function() {
             impuestos: [{ nombre: 'ITBIS (18%)', monto: facturaActual.totales.itbis }],
             total: facturaActual.totales.total,
             condicion: condicionTexto, // Se envía el texto legible
-            abono: facturaActual.abono || 0
+            abono: facturaActual.abono || 0,
+            observaciones: document.getElementById('observacionesFactura')?.value || ''
         };
 
         const response = await fetch(`${API_BASE_URL}/api/generar-factura-pdf`, {

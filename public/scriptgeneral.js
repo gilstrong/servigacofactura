@@ -2179,6 +2179,7 @@ function abrirModalFacturacion(idCotizacion = null) {
   const telInput = document.getElementById('facturaClienteTelefono');
   if (telInput) telInput.value = '';
   document.getElementById('facturaAbono').value = '';
+  if (document.getElementById('facturaObservaciones')) document.getElementById('facturaObservaciones').value = '';
 
   document.getElementById('infoClienteRNC').classList.add('hidden');
   document.getElementById('listaResultadosClientes').classList.add('hidden');
@@ -2317,6 +2318,7 @@ async function generarFacturaFinal() {
   const telefono = telefonoInput ? telefonoInput.value.trim() : '';
   const tipoNCF = document.getElementById('facturaTipoNCF').value;
   const abono   = parseFloat(document.getElementById('facturaAbono').value || 0);
+  const observaciones = document.getElementById('facturaObservaciones').value.trim();
 
   if (!nombre) {
     mostrarNotificacion('El nombre del cliente es obligatorio', 'error');
@@ -2628,7 +2630,8 @@ async function imprimirFactura(idFactura) {
     total: factura.total,
     condicion: factura.condicion_venta,
     vencimiento: factura.fecha_vencimiento ? new Date(factura.fecha_vencimiento).toLocaleDateString('es-DO') : 'N/A',
-    abono: factura.abono || 0
+    abono: factura.abono || 0,
+    observaciones: factura.observaciones || ''
   };
 
   try {
@@ -3054,7 +3057,8 @@ window.guardarEdicionFactura = async function(id) {
         condicion_venta: document.querySelector('input[name="condicion_venta_modal"]:checked')?.value,
         metodo_pago: document.querySelector('select[name="metodo_pago_modal"]').value,
         abono: parseFloat(document.querySelector('input[name="abono_modal"]').value) || 0,
-        referencia: document.querySelector('input[name="referencia_modal"]').value
+        referencia: document.querySelector('input[name="referencia_modal"]').value,
+        observaciones: document.querySelector('textarea[name="observaciones_modal"]').value
     };
 
     try {

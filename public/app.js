@@ -168,8 +168,14 @@ function renderizarFactura(factura, puedeEditar) {
                     </table>
                 </div>
 
+                <!-- SECCIÓN 4: OBSERVACIONES -->
+                <div class="mt-8">
+                    <label for="observaciones" class="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-2">Observaciones</label>
+                    <textarea id="observaciones" name="observaciones" rows="3" class="w-full px-4 py-3 rounded-xl bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-600 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none font-medium text-gray-800 dark:text-white" placeholder="Añadir notas adicionales a la factura...">${factura.observaciones || ''}</textarea>
+                </div>
+
                 <!-- TOTALES -->
-                <div class="flex flex-col md:flex-row justify-end items-start gap-8">
+                <div class="flex flex-col md:flex-row justify-end items-start gap-8 mt-6">
                     <!-- Checkbox ITBIS -->
                     <div class="mt-4">
                         <label class="flex items-center gap-3 cursor-pointer group p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
@@ -319,6 +325,7 @@ async function guardarCambios(e) {
         razon_social: formData.get('razon_social'),
         telefono: formData.get('telefono'),
         condicion_venta: formData.get('condicion_venta'),
+        observaciones: formData.get('observaciones'),
         items: items,
         aplicar_itbis: tieneItbis,
         total: totalFinal
@@ -385,7 +392,8 @@ async function imprimirFactura() {
             total: totalFinal,
             condicion: document.querySelector('input[name="condicion_venta"]:checked')?.value || 'contado',
             abono: facturaActual.abono || 0,
-            vencimiento: facturaActual.fecha_vencimiento || null
+            vencimiento: facturaActual.fecha_vencimiento || null,
+            observaciones: document.getElementById('observaciones').value
         };
 
         const response = await fetch(`${API_BASE_URL}/api/generar-factura-pdf`, {
