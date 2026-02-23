@@ -65,17 +65,15 @@ const generarPDF = async (req, res) => {
         
         const formatearCondicion = (valor) => {
             if (!valor) return "Contado";
-            // Si ya viene con texto "Crédito", lo devolvemos tal cual para mantener compatibilidad
-            if (valor.toLowerCase().includes("crédito") || valor.toLowerCase().includes("credito")) {
-                return valor;
-            }
-        
+
+            // Si viene el código interno (ej: "credito_15"), lo traduce a texto legible.
             if (valor.startsWith("credito_")) {
                 const dias = valor.split("_")[1];
                 return `Crédito a ${dias} días`;
             }
-        
-            return "Contado"; // Default
+
+            // Si el valor ya es un texto legible (ej: "Crédito a 15 días" o "Contado"), simplemente lo retornamos.
+            return valor;
         };
         
         const condicionFormateada = formatearCondicion(condicion);
