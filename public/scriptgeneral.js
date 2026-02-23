@@ -2931,6 +2931,12 @@ window.abrirModalEditarFactura = function(id) {
                         </tbody>
                     </table>
                 </div>
+
+                <div class="mb-8">
+                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-2">Observaciones</label>
+                    <textarea name="observaciones_modal" rows="3" class="w-full px-4 py-3 rounded-xl bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-600 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none font-bold text-gray-800 dark:text-white" placeholder="Añadir notas adicionales...">${factura.observaciones || ''}</textarea>
+                </div>
+
                 <div class="flex flex-col md:flex-row justify-end items-start gap-8">
                     <div class="mt-4">
                         <label class="flex items-center gap-3 cursor-pointer group p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
