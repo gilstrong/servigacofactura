@@ -65,16 +65,52 @@ const generarPDF = async (req, res) => {
         
         const formatearCondicion = (valor) => {
             if (!valor) return "Contado";
+            // Si ya viene con texto "Crédito", lo devolvemos tal cual para mantener compatibilidad
+            if (valor.toLowerCase().includes("crédito") || valor.toLowerCase().includes("credito")) {
+                return valor;
+            }
         
             if (valor.startsWith("credito_")) {
                 const dias = valor.split("_")[1];
                 return `Crédito a ${dias} días`;
             }
         
-            return "Contado";
+            return "Contado"; // Default
         };
         
         const condicionFormateada = formatearCondicion(condicion);
+        const esCredito = condicionFormateada.toLowerCase().includes("crédito");
+
+        // --- LÓGICA DE FECHAS ---
+        
+        // 1. Calcular Vencimiento del NCF (Fecha de factura + 1 año)
+        let vencimientoNCF = "";
+        try {
+            let fechaBase;
+            if (fecha && fecha.includes('/')) { // Formato DD/MM/YYYY
+                const [d, m, y] = fecha.split('/');
+                fechaBase = new Date(y, parseInt(m, 10) - 1, d);
+            } else if (fecha) { // Formato YYYY-MM-DD o ISO
+                const [y, m, d] = fecha.split('T')[0].split('-').map(Number);
+                fechaBase = new Date(y, m - 1, d);
+            }
+
+            if (fechaBase && !isNaN(fechaBase.getTime())) {
+                fechaBase.setFullYear(fechaBase.getFullYear() + 1);
+                vencimientoNCF = fechaBase.toLocaleDateString('es-DO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            }
+        } catch (e) { console.error("Error calculando vencimiento NCF:", e); }
+
+        // 2. Formatear Vencimiento del Crédito (si existe)
+        let vencimientoCreditoFormateado = "";
+        if (vencimiento && esCredito) {
+            try {
+                // El formato de 'vencimiento' es YYYY-MM-DD
+                const [y, m, d] = vencimiento.split('T')[0].split('-').map(Number);
+                const fechaVenc = new Date(y, m - 1, d);
+                vencimientoCreditoFormateado = fechaVenc.toLocaleDateString('es-DO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            } catch (e) { /* No hacer nada si el formato es inválido */ }
+        }
 
         // Lógica para saldo pendiente y estado de vencimiento
         const saldoPendiente = parseFloat(total || 0) - parseFloat(abono || 0);
@@ -191,8 +227,10 @@ const generarPDF = async (req, res) => {
                 <div class="invoice-details">
                     <h1 class="invoice-title">${tituloDocumento || 'FACTURA'}</h1>
                     <div class="meta-item"><span class="meta-label">NCF:</span><span class="meta-value" style="color: #2563eb;">${ncf || 'N/A'}</span></div>
+                    ${vencimientoNCF ? `<div class="meta-item"><span class="meta-label">Vencimiento de NCF:</span><span class="meta-value">${vencimientoNCF}</span></div>` : ''}
                     <div class="meta-item"><span class="meta-label">Fecha:</span><span class="meta-value">${fecha}</span></div>
                     <div class="meta-item"><span class="meta-label">Condición:</span><span class="meta-value" style="text-transform: capitalize;">${condicionFormateada}</span></div>
+                    ${vencimientoCreditoFormateado ? `<div class="meta-item"><span class="meta-label">Vencimiento del crédito:</span><span class="meta-value" style="color: red;">${vencimientoCreditoFormateado}</span></div>` : ''}
                 </div>
             </div>
 
