@@ -144,6 +144,7 @@ async function cargarFactura(id) {
         // Cliente
         document.getElementById('clienteRNC').value = data.rnc_cliente || '';
         document.getElementById('clienteNombre').value = data.razon_social || '';
+        document.getElementById('clienteTelefono').value = data.telefono || '';
         
         // Items
         const items = Array.isArray(data.items) ? data.items : Object.values(data.items || {});
@@ -186,6 +187,10 @@ async function buscarCliente(query) {
             const cliente = resultados[key];
             document.getElementById('clienteRNC').value = key;
             document.getElementById('clienteNombre').value = cliente.nombre || cliente.n;
+            
+            if (cliente.telefono || cliente.tel) {
+                document.getElementById('clienteTelefono').value = cliente.telefono || cliente.tel;
+            }
             
             // Simular búsqueda de deuda (Placeholder)
             document.getElementById('clienteDeuda').value = "RD$ 0.00"; 

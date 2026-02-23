@@ -105,6 +105,10 @@ function renderizarFactura(factura, puedeEditar) {
                             <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-2">Razón Social / Nombre</label>
                             <input type="text" name="razon_social" value="${factura.razon_social || ''}" class="w-full px-4 py-3 rounded-xl bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-600 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none font-bold text-gray-800 dark:text-white">
                         </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-2">Teléfono</label>
+                            <input type="text" name="telefono" value="${factura.telefono || ''}" class="w-full px-4 py-3 rounded-xl bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-600 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none font-bold text-gray-800 dark:text-white">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -313,6 +317,7 @@ async function guardarCambios(e) {
     const datos = { 
         rnc_cliente: formData.get('rnc_cliente'), 
         razon_social: formData.get('razon_social'),
+        telefono: formData.get('telefono'),
         condicion_venta: formData.get('condicion_venta'),
         items: items,
         aplicar_itbis: tieneItbis,
@@ -372,13 +377,15 @@ async function imprimirFactura() {
             cliente: {
                 rnc: document.querySelector('input[name="rnc_cliente"]').value,
                 nombre: document.querySelector('input[name="razon_social"]').value,
-                telefono: facturaActual.telefono || ''
+                telefono: document.querySelector('input[name="telefono"]').value
             },
             items: items,
             subtotal: nuevoTotal,
             impuestos: [{ nombre: 'ITBIS (18%)', monto: itbis }],
             total: totalFinal,
-            condicion: document.querySelector('input[name="condicion_venta"]:checked')?.value || 'contado'
+            condicion: document.querySelector('input[name="condicion_venta"]:checked')?.value || 'contado',
+            abono: facturaActual.abono || 0,
+            vencimiento: facturaActual.fecha_vencimiento || null
         };
 
         const response = await fetch(`${API_BASE_URL}/api/generar-factura-pdf`, {

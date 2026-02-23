@@ -1977,6 +1977,10 @@ async function buscarClientePorRNC(e) {
     if (datos) {
       nombreInput.value = datos.n || datos.nombre;
       infoLabel.textContent = '✅ Cliente encontrado en DGII';
+      
+      const telefonoInput = document.getElementById('facturaClienteTelefono');
+      if (telefonoInput && (datos.telefono || datos.tel)) telefonoInput.value = datos.telefono || datos.tel;
+
       infoLabel.classList.remove('hidden');
     } else {
       mostrarNotificacion('RNC válido pero no registrado en local. Ingrese nombre manual.', 'warning');
@@ -1998,10 +2002,12 @@ async function buscarClientePorRNC(e) {
 async function guardarNuevoCliente() {
   const rncInput = document.getElementById('facturaClienteRNC');
   const nombreInput = document.getElementById('facturaClienteNombre');
+  const telefonoInput = document.getElementById('facturaClienteTelefono');
   const infoLabel = document.getElementById('infoClienteRNC');
 
   const rnc = rncInput.value.replace(/-/g, '').trim();
   const nombre = nombreInput.value.trim();
+  const telefono = telefonoInput ? telefonoInput.value.trim() : '';
 
   if (!validarRNC(rnc)) {
     mostrarNotificacion('RNC inválido', 'error');
@@ -2025,7 +2031,8 @@ async function guardarNuevoCliente() {
     
     await db.ref('maestro_contribuyentes/' + rnc).set({
       n: nombreNormalizado,
-      nombre: nombre 
+      nombre: nombre,
+      telefono: telefono
     });
 
     mostrarNotificacion('✅ Cliente agregado a la base de datos', 'success');
@@ -2169,6 +2176,8 @@ function abrirModalFacturacion(idCotizacion = null) {
   document.getElementById('facturaClienteNombre').value = '';
   document.getElementById('facturaClienteRNC').value = '';
   document.getElementById('facturaFecha').valueAsDate = new Date();
+  const telInput = document.getElementById('facturaClienteTelefono');
+  if (telInput) telInput.value = '';
   document.getElementById('facturaAbono').value = '';
 
   document.getElementById('infoClienteRNC').classList.add('hidden');
@@ -2304,6 +2313,8 @@ async function generarFacturaFinal() {
 
   const rnc     = document.getElementById('facturaClienteRNC').value.trim();
   const nombre  = document.getElementById('facturaClienteNombre').value.trim();
+  const telefonoInput = document.getElementById('facturaClienteTelefono');
+  const telefono = telefonoInput ? telefonoInput.value.trim() : '';
   const tipoNCF = document.getElementById('facturaTipoNCF').value;
   const abono   = parseFloat(document.getElementById('facturaAbono').value || 0);
 
@@ -2362,7 +2373,7 @@ async function generarFacturaFinal() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         cotizacion:    cotizacionParaBackend,
-        cliente:       { rnc, nombre },
+        cliente:       { rnc, nombre, telefono },
         tipoNCF,
         condicionVenta,
         metodoPago,
@@ -2835,6 +2846,10 @@ window.abrirModalEditarFactura = function(id) {
                             <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-2">Razón Social / Nombre</label>
                             <input type="text" name="razon_social" value="${factura.razon_social || ''}" class="w-full px-4 py-3 rounded-xl bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-600 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none font-bold text-gray-800 dark:text-white">
                         </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-2">Teléfono</label>
+                            <input type="text" name="telefono" value="${factura.telefono || ''}" class="w-full px-4 py-3 rounded-xl bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-600 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none font-bold text-gray-800 dark:text-white">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -3031,6 +3046,7 @@ window.guardarEdicionFactura = async function(id) {
     const updates = {
         razon_social: document.querySelector('input[name="razon_social"]').value,
         rnc_cliente: document.querySelector('input[name="rnc_cliente"]').value,
+        telefono: document.querySelector('input[name="telefono"]').value,
         items: items,
         total: totalFinal,
         itbis_total: itbis,
