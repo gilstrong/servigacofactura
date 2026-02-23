@@ -252,9 +252,9 @@ const generarPDF = async (req, res) => {
                     ${logoSrc ? `<img src="${logoSrc}" class="logo-img"/>` : '<h1>SERVICIOS</h1>'}
                     <p>
                         <strong>CENTRO DE COPIADO S & C, SRL</strong><br>
-                        RNC: 130-84851-3<br>
-                        <br>Email: servigacosy@gmail.com<br>
-                        <br>C/CORREA Y CIDRÓN, No. 22, PLAZA CIUDADELA<br>
+                         RNC: 130-84851-3<br>
+                        Email: servigacosy@gmail.com<br>
+                        C/CORREA Y CIDRÓN, No. 22, PLAZA CIUDADELA
                     </p>
                 </div>
                 <div class="invoice-details">
