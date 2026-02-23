@@ -25,16 +25,30 @@ const puppeteerArgs = [
 
 // Función centralizada para iniciar el navegador
 const initBrowser = async () => {
-    if (browser && browser.isConnected()) return;
+    // ✅ Optimización: Limpieza proactiva si el navegador existe pero está desconectado
+    if (browser) {
+        if (browser.isConnected()) return;
+        try { await browser.close(); } catch (e) {}
+        browser = null;
+    }
+
     try {
         console.log("🚀 Iniciando navegador Puppeteer...");
         browser = await puppeteer.launch({
             headless: true,
             args: puppeteerArgs
         });
+
+        // ✅ Optimización: Detectar desconexión para limpiar la referencia
+        browser.on('disconnected', () => {
+            console.warn("⚠️ Navegador desconectado. Se reiniciará en la próxima solicitud.");
+            browser = null;
+        });
+
         console.log("✅ Navegador listo.");
     } catch (e) {
         console.error("❌ Error iniciando navegador:", e);
+        browser = null; // Asegurar que sea null para reintentar luego
     }
 };
 
@@ -223,12 +237,25 @@ const generarPDF = async (req, res) => {
             await initBrowser();
         }
 
+        // ✅ Optimización: Verificación extra por si initBrowser falló
+        if (!browser) throw new Error("No se pudo inicializar el navegador.");
+
         page = await browser.newPage();
         
+        // ✅ Optimización: Manejo de errores a nivel de página
+        page.on('error', err => console.error('❌ Error en página Puppeteer:', err));
+
         // CAMBIO: Usamos 'domcontentloaded' para evitar que se cuelgue esperando recursos
-        await page.setContent(htmlContent, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        // ✅ Optimización: Timeout reducido a 30s para evitar bloqueos largos
+        await page.setContent(htmlContent, { waitUntil: 'domcontentloaded', timeout: 30000 });
         
-        const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '1cm', right: '1cm', bottom: '1cm', left: '1cm' } });
+        // ✅ Optimización: Timeout explícito en generación de PDF
+        const pdfBuffer = await page.pdf({ 
+            format: 'A4', 
+            printBackground: true, 
+            margin: { top: '1cm', right: '1cm', bottom: '1cm', left: '1cm' },
+            timeout: 30000 
+        });
 
         // 🔎 Paso 2 — Verifica tamaño del PDF y guarda copia local
         console.log(`📦 Tamaño del PDF generado: ${pdfBuffer.length} bytes`);
@@ -258,12 +285,60 @@ const generarPDF = async (req, res) => {
 
     } catch (error) {
         console.error("❌ [PDF] Error CRÍTICO:", error);
+        
+        // ✅ Optimización: Detección de crash del navegador para forzar reinicio
+        if (error.message && (
+            error.message.includes('Protocol error') || 
+            error.message.includes('Target closed') ||
+            error.message.includes('Session closed')
+        )) {
+            console.warn("⚠️ Detectado fallo crítico en navegador. Reiniciando instancia...");
+            try { if (browser) await browser.close(); } catch(e) {}
+            browser = null;
+        }
+
         if (!res.headersSent) {
             res.status(500).json({ error: "Error al generar el PDF", details: error.message });
         }
     } finally {
-        if (page) await page.close();
+        if (page) {
+            try {
+                await page.close();
+            } catch (e) {
+                // Ignorar errores si la página ya estaba cerrada o el navegador murió
+                if (!e.message.includes('Protocol error') && !e.message.includes('Target closed')) {
+                    console.error("Error cerrando página:", e);
+                }
+            }
+        }
     }
 };
 
-module.exports = { generarPDF };
+
+// ✅ NUEVO: Endpoint para verificar el estado de salud del navegador
+const verificarSalud = async (req, res) => {
+    try {
+        if (browser && browser.isConnected()) {
+            // Si está conectado, obtenemos la versión como una prueba adicional.
+            const version = await browser.version();
+            res.status(200).json({
+                status: 'ok',
+                message: 'Navegador Puppeteer conectado y listo.',
+                connected: true,
+                version: version,
+            });
+        } else {
+            // Si no está conectado o la instancia es nula, el servicio no está disponible.
+            res.status(503).json({
+                status: 'error',
+                message: 'Navegador Puppeteer no inicializado o desconectado.',
+                connected: false,
+            });
+        }
+    } catch (error) {
+        console.error("❌ Error en health check de Puppeteer:", error);
+        res.status(500).json({ status: 'error', message: 'Ocurrió un error interno al verificar el estado del navegador.', details: error.message });
+    }
+};
+
+module.exports = { generarPDF, verificarSalud };
