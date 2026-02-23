@@ -9,7 +9,7 @@ const crearFactura = async (req, res) => {
     return res.status(500).json({ error: "Base de datos no disponible" });
   }
 
-  let { cotizacion, cliente, tipoNCF, condicionVenta, metodoPago, referenciaPago, abono } = req.body;
+  let { cotizacion, cliente, tipoNCF, condicionVenta, metodoPago, referenciaPago, abono, observaciones } = req.body;
 
   // Sanitizar tipoNCF (Forzar mayúsculas y quitar espacios) para evitar errores como "b1"
   if (tipoNCF) tipoNCF = tipoNCF.trim().toUpperCase();
@@ -136,6 +136,7 @@ const crearFactura = async (req, res) => {
       ncf: ncfCompleto,
       rnc_cliente: cliente.rnc,
       razon_social: cliente.nombre,
+      telefono: cliente.telefono || '',
       fecha_facturacion: new Date().toISOString(),
       origen_cotizacion: cotizacion.id,
       estado: 'vigente',
@@ -148,7 +149,8 @@ const crearFactura = async (req, res) => {
       abono: parseFloat(abono) || 0,
       subtotal: subtotal,
       itbis_total: itbisCalculado,
-      total: cotizacion.total || totalCalculado // Usar el total del frontend si viene, si no el calculado
+      total: cotizacion.total || totalCalculado, // Usar el total del frontend si viene, si no el calculado
+      observaciones: observaciones || ''
     };
 
     delete nuevaFactura.id;

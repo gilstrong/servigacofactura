@@ -79,44 +79,65 @@ const generarPDF = async (req, res) => {
         const condicionFormateada = formatearCondicion(condicion);
         const esCredito = condicionFormateada.toLowerCase().includes("crédito");
 
-        // --- LÓGICA DE FECHAS ---
-        
-        // 1. Calcular Vencimiento del NCF (Fecha de factura + 1 año)
-        let vencimientoNCF = "";
-        try {
-            let fechaBase;
-            if (fecha && fecha.includes('/')) { // Formato DD/MM/YYYY
-                const [d, m, y] = fecha.split('/');
-                fechaBase = new Date(y, parseInt(m, 10) - 1, d);
-            } else if (fecha) { // Formato YYYY-MM-DD o ISO
-                const [y, m, d] = fecha.split('T')[0].split('-').map(Number);
-                fechaBase = new Date(y, m - 1, d);
-            }
+        // --- LÓGICA DE FECHAS (CORREGIDA) ---
 
-            if (fechaBase && !isNaN(fechaBase.getTime())) {
-                fechaBase.setFullYear(fechaBase.getFullYear() + 1);
-                vencimientoNCF = fechaBase.toLocaleDateString('es-DO', { day: '2-digit', month: '2-digit', year: 'numeric' });
-            }
-        } catch (e) { console.error("Error calculando vencimiento NCF:", e); }
-
-        // 2. Formatear Vencimiento del Crédito (si existe)
-        let vencimientoCreditoFormateado = "";
-        if (vencimiento && esCredito) {
+        // 1. Función segura para parsear fechas y evitar problemas de zona horaria
+        const parseDate = (dateString) => {
+            if (!dateString) return null;
+            let date;
             try {
-                // El formato de 'vencimiento' es YYYY-MM-DD
-                const [y, m, d] = vencimiento.split('T')[0].split('-').map(Number);
-                const fechaVenc = new Date(y, m - 1, d);
-                vencimientoCreditoFormateado = fechaVenc.toLocaleDateString('es-DO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                // Formato DD/MM/YYYY
+                if (/\d{1,2}\/\d{1,2}\/\d{4}/.test(dateString)) {
+                    const [d, m, y] = dateString.split('/');
+                    date = new Date(Date.UTC(y, parseInt(m, 10) - 1, d));
+                } 
+                // Formato YYYY-MM-DD o ISO
+                else {
+                    const parts = dateString.split('T')[0].split('-');
+                    date = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+                }
+                if (date && !isNaN(date.getTime())) return date;
+            } catch (e) { /* Fall through */ }
+            return null;
+        };
+
+        const fechaBaseFactura = parseDate(fecha);
+
+        // 2. Calcular Vencimiento del NCF (Fecha de factura + 1 año)
+        let vencimientoNCF = "";
+        if (fechaBaseFactura) {
+            try {
+                const fechaVencNCF = new Date(fechaBaseFactura);
+                fechaVencNCF.setUTCFullYear(fechaVencNCF.getUTCFullYear() + 1);
+                vencimientoNCF = fechaVencNCF.toLocaleDateString('es-DO', { timeZone: 'UTC', day: '2-digit', month: '2-digit', year: 'numeric' });
+            } catch (e) { console.error("Error calculando vencimiento NCF:", e); }
+        }
+
+        // 3. Calcular Vencimiento del Crédito (si aplica)
+        let vencimientoCreditoFormateado = "";
+        let fechaVencimientoCredito = null;
+        if (esCredito && fechaBaseFactura) {
+            try {
+                fechaVencimientoCredito = new Date(fechaBaseFactura);
+                if (condicion === 'credito_15' || condicionFormateada.includes('15')) {
+                    fechaVencimientoCredito.setUTCDate(fechaVencimientoCredito.getUTCDate() + 15);
+                } else if (condicion === 'credito_30' || condicionFormateada.includes('30')) {
+                    fechaVencimientoCredito.setUTCDate(fechaVencimientoCredito.getUTCDate() + 30);
+                }
+                
+                if (!isNaN(fechaVencimientoCredito.getTime())) {
+                    vencimientoCreditoFormateado = fechaVencimientoCredito.toLocaleDateString('es-DO', { timeZone: 'UTC', day: '2-digit', month: '2-digit', year: 'numeric' });
+                }
             } catch (e) { /* No hacer nada si el formato es inválido */ }
         }
 
         // Lógica para saldo pendiente y estado de vencimiento
         const saldoPendiente = parseFloat(total || 0) - parseFloat(abono || 0);
         let estaVencida = false;
-        if (vencimiento && saldoPendiente > 0) {
-            const hoyString = new Date().toISOString().split('T')[0]; // Formato YYYY-MM-DD
-            // Comparamos directamente las cadenas de fecha en formato YYYY-MM-DD
-            if (vencimiento < hoyString) {
+        if (fechaVencimientoCredito && saldoPendiente > 0) {
+            const hoy = new Date();
+            const hoyUTC = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth(), hoy.getUTCDate()));
+            if (fechaVencimientoCredito < hoyUTC) {
                 estaVencida = true;
             }
         }
@@ -171,7 +192,7 @@ const generarPDF = async (req, res) => {
                 .header-container { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; border-bottom: 2px solid #2563eb; padding-bottom: 20px; }
                 .company-info h1 { margin: 0; font-size: 22px; color: #2563eb; text-transform: uppercase; letter-spacing: 1px; }
                 .company-info p { margin: 5px 0 0; font-size: 12px; color: #666; }
-                .logo-img { height: 70px; width: auto; object-fit: contain; }
+                .logo-img { height: 90px; width: auto; object-fit: contain; }
 
                 /* Invoice Details */
                 .invoice-details { text-align: right; }
@@ -218,12 +239,13 @@ const generarPDF = async (req, res) => {
                     ${logoSrc ? `<img src="${logoSrc}" class="logo-img"/>` : '<h1>SERVICIOS</h1>'}
                     <p>
                         <strong>CENTRO DE COPIADO S & C, SRL</strong><br>
-                        RNC: 131-27958-9<br>
-                        Av. Independencia esq. Héroes de Luperón
+                        RNC: 130-84851-3<br>
+                        Email: servigacosy@gmail.com
+                        C/CORREA Y CIDRÓN, No. 22, PLAZA CIUDADELA 
                     </p>
                 </div>
                 <div class="invoice-details">
-                    <h1 class="invoice-title">${tituloDocumento || 'FACTURA'}</h1>
+                    <h1 class="invoice-title">${tituloDocumento || 'FACTURA CON VALOR FISCAL'}</h1>
                     <div class="meta-item"><span class="meta-label">NCF:</span><span class="meta-value" style="color: #2563eb;">${ncf || 'N/A'}</span></div>
                     ${vencimientoNCF ? `<div class="meta-item"><span class="meta-label">Vencimiento de NCF:</span><span class="meta-value">${vencimientoNCF}</span></div>` : ''}
                     <div class="meta-item"><span class="meta-label">Fecha:</span><span class="meta-value">${fecha}</span></div>
@@ -235,7 +257,7 @@ const generarPDF = async (req, res) => {
             <div class="client-box">
                 <div class="client-label">Facturado a:</div>
                 <div class="client-name">${datosCliente.nombre || 'Cliente General'}</div>
-                <div class="client-meta">RNC/Cédula: ${datosCliente.rnc || 'N/A'} • Tel: ${datosCliente.telefono || 'N/A'}</div>
+                <div class="client-meta">RNC/Cédula: ${datosCliente.rnc || 'N/A'} • Tel: ${datosCliente.telefono || datosCliente.tel || 'N/A'}</div>
             </div>
 
             <table>
