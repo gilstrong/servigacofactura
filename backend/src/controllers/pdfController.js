@@ -87,6 +87,21 @@ const generarPDF = async (req, res) => {
         // Detectar si es una cotización para ocultar campos fiscales
         const esCotizacion = (ncf === 'COTIZACIÓN') || (tituloDocumento && tituloDocumento.toUpperCase().includes('COTIZACIÓN'));
 
+        // Determinar descripción del tipo de NCF para mostrar en Factura
+        let tipoNCFDescripcion = '';
+        if (!esCotizacion && ncf && ncf.length >= 3) {
+            const prefix = ncf.substring(0, 3);
+            const tiposNCF = {
+                'B01': 'Crédito Fiscal',
+                'B02': 'Consumo',
+                'B03': 'Nota de Débito',
+                'B04': 'Nota de Crédito',
+                'B14': 'Regímenes Especiales',
+                'B15': 'Gubernamental'
+            };
+            tipoNCFDescripcion = tiposNCF[prefix] || '';
+        }
+
         const formatearCondicion = (valor) => {
             if (!valor) return "Contado";
 
@@ -293,7 +308,7 @@ const generarPDF = async (req, res) => {
                     z-index: 1;
                 }
                 .seal-img {
-                    width: 100px; /* Tamaño ajustado para que no sea muy grande */
+                    width: 180px; /* Aumentado para mayor visibilidad */
                     opacity: 0.8;
                     margin-top: 15px; /* Espacio entre el texto "Realizado Por" y el sello */
                 }
@@ -317,6 +332,7 @@ const generarPDF = async (req, res) => {
                 <div class="invoice-details">
                     <h1 class="invoice-title" style="${esCotizacion ? 'color: #ea580c;' : ''}">${tituloDocumento || 'FACTURA CON VALOR FISCAL'}</h1>
                     ${!esCotizacion ? `<div class="meta-item"><span class="meta-label">NCF:</span><span class="meta-value" style="color: #2563eb;">${ncf || 'N/A'}</span></div>` : ''}
+                    ${!esCotizacion && tipoNCFDescripcion ? `<div class="meta-item"><span class="meta-label">Tipo de NCF:</span><span class="meta-value">${tipoNCFDescripcion}</span></div>` : ''}
                     ${!esCotizacion && vencimientoNCF ? `<div class="meta-item"><span class="meta-label">Vencimiento de NCF:</span><span class="meta-value">${vencimientoNCF}</span></div>` : ''}
                     <div class="meta-item"><span class="meta-label">Fecha:</span><span class="meta-value">${fecha}</span></div>
                     ${!esCotizacion ? `<div class="meta-item"><span class="meta-label">Condición:</span><span class="meta-value" style="text-transform: capitalize;">${condicionFormateada}</span></div>` : ''}
