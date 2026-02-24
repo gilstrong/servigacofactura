@@ -72,6 +72,16 @@ const generarPDF = async (req, res) => {
             }
         } catch (e) { console.error("Error cargando firma:", e); }
 
+        // Cargar sello dinámicamente
+        let selloSrc = null;
+        try {
+            const selloPath = path.join(__dirname, '../../../public/assets/sello.png');
+            if (fs.existsSync(selloPath)) {
+                const selloBase64 = fs.readFileSync(selloPath, { encoding: 'base64' });
+                selloSrc = `data:image/png;base64,${selloBase64}`;
+            }
+        } catch (e) { console.error("Error cargando sello:", e); }
+
         const { ncf, fecha, cliente, items, subtotal, impuestos, total, tituloDocumento, condicion, abono, vencimiento, observaciones } = data;
         
         const formatearCondicion = (valor) => {
@@ -275,9 +285,18 @@ const generarPDF = async (req, res) => {
                     bottom: 20px;
                     left: 50%;
                     transform: translateX(-50%);
-                    max-height: 100px;
-                    max-width: 100%;
+                    max-height: 180px;
+                    max-width: 200%;
                     z-index: 1;
+                }
+                .seal-img {
+                    position: absolute;
+                    bottom: 10px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    width: 140px;
+                    opacity: 0.8;
+                    z-index: 0;
                 }
                 .signature-box p { font-size: 12px; color: #333; margin: 0; font-weight: 600; position: relative; z-index: 10; }
 
@@ -349,7 +368,8 @@ const generarPDF = async (req, res) => {
 
             <div class="signatures-container">
                 <div class="signature-box">
-                    ${firmaSrc ? `<img src="${firmaSrc}" class="signature-img" style="width: 120px;" alt="Firma" />` : ''}
+                    ${selloSrc ? `<img src="${selloSrc}" class="seal-img" alt="Sello" />` : ''}
+                    ${firmaSrc ? `<img src="${firmaSrc}" class="signature-img" style="width: 250px;" alt="Firma" />` : ''}
                     <div class="signature-line"></div>
                     <p>Realizado Por:</p>
                 </div>
