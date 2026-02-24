@@ -84,6 +84,9 @@ const generarPDF = async (req, res) => {
 
         const { ncf, fecha, cliente, items, subtotal, impuestos, total, tituloDocumento, condicion, abono, vencimiento, observaciones } = data;
         
+        // Detectar si es una cotización para ocultar campos fiscales
+        const esCotizacion = (ncf === 'COTIZACIÓN') || (tituloDocumento && tituloDocumento.toUpperCase().includes('COTIZACIÓN'));
+
         const formatearCondicion = (valor) => {
             if (!valor) return "Contado";
 
@@ -290,13 +293,9 @@ const generarPDF = async (req, res) => {
                     z-index: 1;
                 }
                 .seal-img {
-                    position: absolute;
-                    bottom: 10px;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    width: 140px;
+                    width: 100px; /* Tamaño ajustado para que no sea muy grande */
                     opacity: 0.8;
-                    z-index: 0;
+                    margin-top: 15px; /* Espacio entre el texto "Realizado Por" y el sello */
                 }
                 .signature-box p { font-size: 12px; color: #333; margin: 0; font-weight: 600; position: relative; z-index: 10; }
 
@@ -316,12 +315,12 @@ const generarPDF = async (req, res) => {
                     </p>
                 </div>
                 <div class="invoice-details">
-                    <h1 class="invoice-title">${tituloDocumento || 'FACTURA CON VALOR FISCAL'}</h1>
-                    <div class="meta-item"><span class="meta-label">NCF:</span><span class="meta-value" style="color: #2563eb;">${ncf || 'N/A'}</span></div>
-                    ${vencimientoNCF ? `<div class="meta-item"><span class="meta-label">Vencimiento de NCF:</span><span class="meta-value">${vencimientoNCF}</span></div>` : ''}
+                    <h1 class="invoice-title" style="${esCotizacion ? 'color: #ea580c;' : ''}">${tituloDocumento || 'FACTURA CON VALOR FISCAL'}</h1>
+                    ${!esCotizacion ? `<div class="meta-item"><span class="meta-label">NCF:</span><span class="meta-value" style="color: #2563eb;">${ncf || 'N/A'}</span></div>` : ''}
+                    ${!esCotizacion && vencimientoNCF ? `<div class="meta-item"><span class="meta-label">Vencimiento de NCF:</span><span class="meta-value">${vencimientoNCF}</span></div>` : ''}
                     <div class="meta-item"><span class="meta-label">Fecha:</span><span class="meta-value">${fecha}</span></div>
-                    <div class="meta-item"><span class="meta-label">Condición:</span><span class="meta-value" style="text-transform: capitalize;">${condicionFormateada}</span></div>
-                    ${vencimientoCreditoFormateado ? `<div class="meta-item"><span class="meta-label">Vencimiento del crédito:</span><span class="meta-value" style="color: red;">${vencimientoCreditoFormateado}</span></div>` : ''}
+                    ${!esCotizacion ? `<div class="meta-item"><span class="meta-label">Condición:</span><span class="meta-value" style="text-transform: capitalize;">${condicionFormateada}</span></div>` : ''}
+                    ${!esCotizacion && vencimientoCreditoFormateado ? `<div class="meta-item"><span class="meta-label">Vencimiento del crédito:</span><span class="meta-value" style="color: red;">${vencimientoCreditoFormateado}</span></div>` : ''}
                 </div>
             </div>
 
@@ -357,7 +356,7 @@ const generarPDF = async (req, res) => {
                         <td class="total-final-label">TOTAL:</td>
                         <td class="total-final-value">RD$ ${parseFloat(total || 0).toLocaleString('es-DO', {minimumFractionDigits: 2})}</td>
                     </tr>
-                    ${saldoPendiente > 0 ? `
+                    ${!esCotizacion && saldoPendiente > 0 ? `
                     <tr class="total-row">
                         <td class="total-final-label" style="${estiloPendienteLabel}">PENDIENTE:</td>
                         <td class="total-final-value" style="${estiloPendienteValor}">RD$ ${saldoPendiente.toLocaleString('es-DO', {minimumFractionDigits: 2})}</td>
@@ -368,10 +367,10 @@ const generarPDF = async (req, res) => {
 
             <div class="signatures-container">
                 <div class="signature-box">
-                    ${selloSrc ? `<img src="${selloSrc}" class="seal-img" alt="Sello" />` : ''}
                     ${firmaSrc ? `<img src="${firmaSrc}" class="signature-img" style="width: 250px;" alt="Firma" />` : ''}
                     <div class="signature-line"></div>
                     <p>Realizado Por:</p>
+                    ${selloSrc ? `<img src="${selloSrc}" class="seal-img" alt="Sello" />` : ''}
                 </div>
                 <div class="signature-box">
                     <div class="signature-line"></div>
