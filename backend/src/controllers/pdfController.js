@@ -251,6 +251,7 @@ const generarPDF = async (req, res) => {
                 /* Invoice Details */
                 .invoice-details { text-align: right; }
                 .invoice-title { font-size: 32px; font-weight: 900; color: #1e293b; margin: 0 0 5px 0; letter-spacing: -1px; }
+                .invoice-subtitle { font-size: 15px; font-weight: 800; color: #475569; margin: -2px 0 10px 0; text-transform: uppercase; letter-spacing: 0.5px; }
                 .meta-item { margin-bottom: 3px; }
                 .meta-label { font-weight: bold; color: #64748b; font-size: 11px; text-transform: uppercase; margin-right: 5px; }
                 .meta-value { font-weight: bold; color: #333; font-size: 13px; }
@@ -300,7 +301,7 @@ const generarPDF = async (req, res) => {
                 }
                 .signature-img {
                     position: absolute;
-                    bottom: 20px;
+                    bottom: 8px;
                     left: 50%;
                     transform: translateX(-50%);
                     max-height: 180px;
@@ -331,8 +332,8 @@ const generarPDF = async (req, res) => {
                 </div>
                 <div class="invoice-details">
                     <h1 class="invoice-title" style="${esCotizacion ? 'color: #ea580c;' : ''}">${tituloDocumento || 'FACTURA CON VALOR FISCAL'}</h1>
+                    ${!esCotizacion && tipoNCFDescripcion ? `<h2 class="invoice-subtitle">${tipoNCFDescripcion}</h2>` : ''}
                     ${!esCotizacion ? `<div class="meta-item"><span class="meta-label">NCF:</span><span class="meta-value" style="color: #2563eb;">${ncf || 'N/A'}</span></div>` : ''}
-                    ${!esCotizacion && tipoNCFDescripcion ? `<div class="meta-item"><span class="meta-label">Tipo de NCF:</span><span class="meta-value">${tipoNCFDescripcion}</span></div>` : ''}
                     ${!esCotizacion && vencimientoNCF ? `<div class="meta-item"><span class="meta-label">Vencimiento de NCF:</span><span class="meta-value">${vencimientoNCF}</span></div>` : ''}
                     <div class="meta-item"><span class="meta-label">Fecha:</span><span class="meta-value">${fecha}</span></div>
                     ${!esCotizacion ? `<div class="meta-item"><span class="meta-label">Condición:</span><span class="meta-value" style="text-transform: capitalize;">${condicionFormateada}</span></div>` : ''}
@@ -383,8 +384,10 @@ const generarPDF = async (req, res) => {
 
             <div class="signatures-container">
                 <div class="signature-box">
-                    ${firmaSrc ? `<img src="${firmaSrc}" class="signature-img" style="width: 250px;" alt="Firma" />` : ''}
-                    <div class="signature-line"></div>
+                    <div style="position: relative;">
+                        ${firmaSrc ? `<img src="${firmaSrc}" class="signature-img" style="width: 250px;" alt="Firma" />` : ''}
+                        <div class="signature-line"></div>
+                    </div>
                     <p>Realizado Por:</p>
                     ${selloSrc ? `<img src="${selloSrc}" class="seal-img" alt="Sello" />` : ''}
                 </div>
