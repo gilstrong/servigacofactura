@@ -2993,8 +2993,34 @@ window.agregarItemVacioModal = function() {
         if (idx > maxIndex) maxIndex = idx;
     });
     const newIndex = maxIndex + 1;
-    tbody.insertAdjacentHTML('beforeend', renderizarItemsEditablesModal([{nombre: 'Nuevo Item', cantidad: 1, precio: 0, precioUnitario: 0, descripcion: ''}]).replace('data-index="0"', `data-index="${newIndex}"`));
+
+    const newRowHtml = `
+        <tr data-index="${newIndex}" class="group hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors animate-fade-in">
+            <td class="p-3">
+                <input type="text" name="item_desc_${newIndex}" value="" class="w-full px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-medium transition-all" placeholder="Descripción del nuevo item">
+            </td>
+            <td class="p-3">
+                <input type="number" name="item_cant_${newIndex}" value="1" min="1" class="w-full px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-medium text-center transition-all" oninput="recalcularTotalesModal()">
+            </td>
+            <td class="p-3">
+                <input type="number" name="item_precio_${newIndex}" value="0.00" min="0" step="0.01" class="w-full px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-medium text-right transition-all" oninput="recalcularTotalesModal()">
+            </td>
+            <td id="total_row_${newIndex}" class="p-3 text-right font-bold text-gray-700 dark:text-gray-300">RD$ 0.00</td>
+            <td class="p-3 text-center">
+                <button type="button" onclick="eliminarFilaModal(this)" class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all" title="Eliminar item">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                </button>
+            </td>
+        </tr>
+    `;
+
+    tbody.insertAdjacentHTML('beforeend', newRowHtml);
     recalcularTotalesModal();
+
+    const nuevoInput = tbody.querySelector(`input[name="item_desc_${newIndex}"]`);
+    if (nuevoInput) {
+        nuevoInput.focus();
+    }
 };
 
 window.eliminarFilaModal = function(btn) {
