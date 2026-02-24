@@ -3925,3 +3925,21 @@ function mostrarBienvenida(nombre) {
     setTimeout(() => overlay.remove(), 500);
   }, 2500);
 }
+
+// ============================================
+// 🩺 VERIFICACIÓN DE ESTADO DEL SERVIDOR
+// ============================================
+function verificarEstadoBackend() {
+  fetch(`${API_BASE_URL}/api/health`)
+    .then(response => {
+      if (!response.ok) throw new Error("Error de conexión");
+    })
+    .catch(() => {
+      const aviso = document.createElement('div');
+      aviso.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; background-color: #dc2626; color: white; text-align: center; padding: 15px; font-weight: bold; z-index: 9999999; box-shadow: 0 4px 10px rgba(0,0,0,0.3); font-family: sans-serif;";
+      aviso.innerHTML = "⚠️ El servidor se ha apagado. Por favor actualice la página en unos segundos.";
+      document.body.prepend(aviso);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', verificarEstadoBackend);
