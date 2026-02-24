@@ -4,7 +4,6 @@ const path = require('path');
 
 let browser;
 let logoBase64Cache = null;
-let firmaBase64Cache = null;
 
 // Configuración optimizada de argumentos para Render (Más agresiva)
 const puppeteerArgs = [
@@ -50,15 +49,6 @@ const initBrowser = async () => {
         }
     } catch (e) { console.error("Error cargando logo al inicio:", e); }
 
-    // 2. Cargar Firma y Sello en memoria
-    try {
-        const firmaPath = path.join(__dirname, '../../../public/assets/firma_sello.png');
-        if (fs.existsSync(firmaPath)) {
-            const bitmap = fs.readFileSync(firmaPath);
-            firmaBase64Cache = `data:image/png;base64,${bitmap.toString('base64')}`;
-        }
-    } catch (e) { console.error("Error cargando firma al inicio:", e); }
-
     // 2. Iniciar navegador
     await initBrowser();
 })();
@@ -71,7 +61,17 @@ const generarPDF = async (req, res) => {
         
         // 1. Preparar datos, Logo y Abono
         const logoSrc = logoBase64Cache; // Usar variable en memoria (Instantáneo)
-        const firmaSrc = firmaBase64Cache;
+        
+        // Cargar firma dinámicamente (Fix solicitado)
+        let firmaSrc = null;
+        try {
+            const firmaPath = path.join(__dirname, '../../../public/assets/firma.png');
+            if (fs.existsSync(firmaPath)) {
+                const firmaBase64 = fs.readFileSync(firmaPath, { encoding: 'base64' });
+                firmaSrc = `data:image/png;base64,${firmaBase64}`;
+            }
+        } catch (e) { console.error("Error cargando firma:", e); }
+
         const { ncf, fecha, cliente, items, subtotal, impuestos, total, tituloDocumento, condicion, abono, vencimiento, observaciones } = data;
         
         const formatearCondicion = (valor) => {
@@ -349,7 +349,7 @@ const generarPDF = async (req, res) => {
 
             <div class="signatures-container">
                 <div class="signature-box">
-                    ${firmaSrc ? `<img src="${firmaSrc}" class="signature-img" alt="Firma" />` : ''}
+                    ${firmaSrc ? `<img src="${firmaSrc}" class="signature-img" style="width: 120px;" alt="Firma" />` : ''}
                     <div class="signature-line"></div>
                     <p>Realizado Por:</p>
                 </div>
