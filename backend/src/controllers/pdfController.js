@@ -92,12 +92,12 @@ const generarPDF = async (req, res) => {
         if (!esCotizacion && ncf && ncf.length >= 3) {
             const prefix = ncf.substring(0, 3);
             const tiposNCF = {
-                'B01': 'Crédito Fiscal',
-                'B02': 'Consumo',
-                'B03': 'Nota de Débito',
-                'B04': 'Nota de Crédito',
-                'B14': 'Regímenes Especiales',
-                'B15': 'Gubernamental'
+                'B01': 'Comprobante Crédito Fiscal',
+                'B02': 'Comprobante Consumidor Final',
+                'B03': 'Comprobante Nota de Débito',
+                'B04': 'Comprobante Nota de Crédito',
+                'B14': 'Comprobante Regímenes Especiales',
+                'B15': 'Comprobante Gubernamental'
             };
             tipoNCFDescripcion = tiposNCF[prefix] || '';
         }
