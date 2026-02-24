@@ -4,6 +4,7 @@ const path = require('path');
 
 let browser;
 let logoBase64Cache = null;
+let firmaBase64Cache = null;
 
 // Configuración optimizada de argumentos para Render (Más agresiva)
 const puppeteerArgs = [
@@ -49,6 +50,15 @@ const initBrowser = async () => {
         }
     } catch (e) { console.error("Error cargando logo al inicio:", e); }
 
+    // 2. Cargar Firma y Sello en memoria
+    try {
+        const firmaPath = path.join(__dirname, '../../../public/assets/firma_sello.png');
+        if (fs.existsSync(firmaPath)) {
+            const bitmap = fs.readFileSync(firmaPath);
+            firmaBase64Cache = `data:image/png;base64,${bitmap.toString('base64')}`;
+        }
+    } catch (e) { console.error("Error cargando firma al inicio:", e); }
+
     // 2. Iniciar navegador
     await initBrowser();
 })();
@@ -61,6 +71,7 @@ const generarPDF = async (req, res) => {
         
         // 1. Preparar datos, Logo y Abono
         const logoSrc = logoBase64Cache; // Usar variable en memoria (Instantáneo)
+        const firmaSrc = firmaBase64Cache;
         const { ncf, fecha, cliente, items, subtotal, impuestos, total, tituloDocumento, condicion, abono, vencimiento, observaciones } = data;
         
         const formatearCondicion = (valor) => {
@@ -249,6 +260,27 @@ const generarPDF = async (req, res) => {
                 .notes-title { font-weight: bold; font-size: 11px; text-transform: uppercase; color: #64748b; margin-bottom: 5px; }
                 .notes-text { font-size: 12px; color: #475569; margin: 0; white-space: pre-wrap; }
 
+                /* Signatures */
+                .signatures-container { display: flex; justify-content: space-between; text-align: center; margin-top: 80px; page-break-inside: avoid; }
+                .signature-box { width: 30%; position: relative; }
+                .signature-line { 
+                    height: 60px; /* Espacio para firma y sello */
+                    border-bottom: 1px solid #475569; 
+                    margin-bottom: 8px; 
+                    position: relative;
+                    z-index: 10;
+                }
+                .signature-img {
+                    position: absolute;
+                    bottom: 20px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    max-height: 100px;
+                    max-width: 100%;
+                    z-index: 1;
+                }
+                .signature-box p { font-size: 12px; color: #333; margin: 0; font-weight: 600; position: relative; z-index: 10; }
+
                 /* Footer */
                 .footer { position: fixed; bottom: 40px; left: 40px; right: 40px; text-align: center; font-size: 10px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 15px; }
             </style>
@@ -313,6 +345,22 @@ const generarPDF = async (req, res) => {
                     </tr>
                     ` : ''}
                 </table>
+            </div>
+
+            <div class="signatures-container">
+                <div class="signature-box">
+                    ${firmaSrc ? `<img src="${firmaSrc}" class="signature-img" alt="Firma" />` : ''}
+                    <div class="signature-line"></div>
+                    <p>Realizado Por:</p>
+                </div>
+                <div class="signature-box">
+                    <div class="signature-line"></div>
+                    <p>Entregado por:</p>
+                </div>
+                <div class="signature-box">
+                    <div class="signature-line"></div>
+                    <p>Recibido por:</p>
+                </div>
             </div>
 
             <div class="footer">Documento generado electrónicamente por ServiGaco System.</div>
