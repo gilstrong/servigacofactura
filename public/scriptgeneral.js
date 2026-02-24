@@ -2312,13 +2312,13 @@ async function generarFacturaFinal() {
     return;
   }
 
-  const rnc     = document.getElementById('facturaClienteRNC').value.trim();
-  const nombre  = document.getElementById('facturaClienteNombre').value.trim();
+  const rnc     = (document.getElementById('facturaClienteRNC')?.value || '').trim();
+  const nombre  = (document.getElementById('facturaClienteNombre')?.value || '').trim();
   const telefonoInput = document.getElementById('facturaClienteTelefono');
   const telefono = telefonoInput ? telefonoInput.value.trim() : '';
-  const tipoNCF = document.getElementById('facturaTipoNCF').value;
-  const abono   = parseFloat(document.getElementById('facturaAbono').value || 0);
-  const observaciones = document.getElementById('facturaObservaciones').value.trim();
+  const tipoNCF = document.getElementById('facturaTipoNCF')?.value || 'B02';
+  const abono   = parseFloat(document.getElementById('facturaAbono')?.value || 0);
+  const observaciones = (document.getElementById('facturaObservaciones')?.value || '').trim();
 
   if (!nombre) {
     mostrarNotificacion('El nombre del cliente es obligatorio', 'error');
@@ -2367,8 +2367,8 @@ async function generarFacturaFinal() {
 
   try {
     const condicionVenta = document.querySelector('input[name="facturaCondicionVenta"]:checked')?.value || 'contado';
-    const metodoPago     = document.getElementById('facturaMetodoPago').value;
-    const referenciaPago = document.getElementById('facturaReferencia').value;
+    const metodoPago     = document.getElementById('facturaMetodoPago')?.value || 'efectivo';
+    const referenciaPago = (document.getElementById('facturaReferencia')?.value || '').trim();
 
     const response = await fetch(`${API_BASE_URL}/api/facturar`, {
       method: 'POST',
@@ -2380,7 +2380,8 @@ async function generarFacturaFinal() {
         condicionVenta,
         metodoPago,
         referenciaPago,
-        abono
+        abono,
+        observaciones
       })
     });
 
