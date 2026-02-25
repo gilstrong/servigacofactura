@@ -116,7 +116,7 @@ const generarPDF = async (req, res) => {
         };
         
         const condicionFormateada = formatearCondicion(condicion);
-        const esCredito = condicionFormateada.toLowerCase().includes("crédito");
+        const esCredito = condicionFormateada.toLowerCase().includes("crédito") || condicionFormateada.toLowerCase().includes("credito");
 
         // --- LÓGICA DE FECHAS (CORREGIDA) ---
 
@@ -327,6 +327,7 @@ const generarPDF = async (req, res) => {
                         <strong>CENTRO DE COPIADO S & C, SRL</strong><br>
                          RNC: 130-84851-3<br>
                         Email: servigacosy@gmail.com<br>
+                        Tel: 809-682-1075<br>
                         C/CORREA Y CIDRÓN, No. 22, PLAZA CIUDADELA
                     </p>
                 </div>
@@ -373,7 +374,7 @@ const generarPDF = async (req, res) => {
                         <td class="total-final-label">TOTAL:</td>
                         <td class="total-final-value">RD$ ${parseFloat(total || 0).toLocaleString('es-DO', {minimumFractionDigits: 2})}</td>
                     </tr>
-                    ${!esCotizacion && saldoPendiente > 0 ? `
+                    ${!esCotizacion && esCredito && saldoPendiente > 0 ? `
                     <tr class="total-row">
                         <td class="total-final-label" style="${estiloPendienteLabel}">PENDIENTE:</td>
                         <td class="total-final-value" style="${estiloPendienteValor}">RD$ ${saldoPendiente.toLocaleString('es-DO', {minimumFractionDigits: 2})}</td>
