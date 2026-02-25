@@ -2159,10 +2159,11 @@ function abrirModalFacturacion(idCotizacion = null) {
   if (!cotizacionAFacturar.items || cotizacionAFacturar.items.length === 0) {
     const total = parseFloat(cotizacionAFacturar.total || 0);
     if (total > 0) {
+      const descriptiveName = cotizacionAFacturar.descripcion || "Servicio Cotizado";
       cotizacionAFacturar.items = [{
         cantidad: 1,
-        nombre: "Servicio Cotizado",
-        descripcion: cotizacionAFacturar.descripcion || "Detalle de cotización",
+        nombre: descriptiveName,
+        descripcion: "", // Keep description empty if name is already descriptive
         precioUnitario: total,
         precio: total
       }];
