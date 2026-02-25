@@ -334,10 +334,10 @@ const generarPDF = async (req, res) => {
                     <h1 class="invoice-title" style="${esCotizacion ? 'color: #ea580c;' : ''}">${tituloDocumento || 'FACTURA CON VALOR FISCAL'}</h1>
                     ${!esCotizacion && tipoNCFDescripcion ? `<h2 class="invoice-subtitle">${tipoNCFDescripcion}</h2>` : ''}
                     ${!esCotizacion ? `<div class="meta-item"><span class="meta-label">NCF:</span><span class="meta-value" style="color: #2563eb;">${ncf || 'N/A'}</span></div>` : ''}
-                    ${!esCotizacion && vencimientoNCF ? `<div class="meta-item"><span class="meta-label">Vencimiento de NCF:</span><span class="meta-value">${vencimientoNCF}</span></div>` : ''}
+                    ${!esCotizacion && vencimientoCreditoFormateado ? `<div class="meta-item"><span class="meta-label">Vencimiento del crédito:</span><span class="meta-value" style="color: red;">${vencimientoCreditoFormateado}</span></div>` : ''}
                     <div class="meta-item"><span class="meta-label">Fecha:</span><span class="meta-value">${fecha}</span></div>
                     ${!esCotizacion ? `<div class="meta-item"><span class="meta-label">Condición:</span><span class="meta-value" style="text-transform: capitalize;">${condicionFormateada}</span></div>` : ''}
-                    ${!esCotizacion && vencimientoCreditoFormateado ? `<div class="meta-item"><span class="meta-label">Vencimiento del crédito:</span><span class="meta-value" style="color: red;">${vencimientoCreditoFormateado}</span></div>` : ''}
+                    ${!esCotizacion && vencimientoNCF ? `<div class="meta-item"><span class="meta-label">Vencimiento de NCF:</span><span class="meta-value">${vencimientoNCF}</span></div>` : ''}
                 </div>
             </div>
 
