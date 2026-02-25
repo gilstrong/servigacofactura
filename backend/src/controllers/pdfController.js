@@ -4,6 +4,7 @@ const path = require('path');
 
 let browser;
 let logoBase64Cache = null;
+const pages = []; // Pool de páginas para reutilización
 
 // Configuración optimizada de argumentos para Render (Más agresiva)
 const puppeteerArgs = [
@@ -35,6 +36,44 @@ const initBrowser = async () => {
         console.log("✅ Navegador listo.");
     } catch (e) {
         console.error("❌ Error iniciando navegador:", e);
+    }
+};
+
+// --- GESTIÓN DEL POOL DE PÁGINAS ---
+
+/**
+ * Obtiene una página del pool o crea una nueva.
+ * Esto es más rápido que crear una página en cada solicitud.
+ */
+const getPage = async () => {
+    if (!browser || !browser.isConnected()) {
+        await initBrowser();
+    }
+
+    if (pages.length > 0) {
+        console.log(`♻️  Reutilizando página del pool. Disponibles: ${pages.length - 1}`);
+        return pages.pop();
+    }
+
+    console.log("✨ Creando nueva página de Puppeteer.");
+    return await browser.newPage();
+};
+
+/**
+ * Devuelve una página al pool para que pueda ser reutilizada.
+ * @param {import('puppeteer').Page} page La página a devolver.
+ */
+const releasePage = async (page) => {
+    try {
+        // Limpiar la página para evitar efectos secundarios y liberar memoria.
+        if (page && !page.isClosed() && page.url() !== 'about:blank') {
+            await page.goto('about:blank');
+        }
+        pages.push(page);
+        console.log(`✅ Página devuelta al pool. Disponibles: ${pages.length}`);
+    } catch (e) {
+        console.warn("⚠️ No se pudo devolver la página al pool, se cerrará.", e.message);
+        if (page && !page.isClosed()) await page.close();
     }
 };
 
@@ -407,27 +446,24 @@ const generarPDF = async (req, res) => {
         </html>
         `;
 
-        // 3. Generar PDF con Puppeteer
-        // Verificar si el navegador está conectado, si no, reiniciarlo
-        if (!browser || !browser.isConnected()) {
-            await initBrowser();
-        }
-
-        page = await browser.newPage();
+        // 3. Generar PDF con Puppeteer (usando el pool de páginas)
+        page = await getPage();
         
         // CAMBIO: Usamos 'domcontentloaded' para evitar que se cuelgue esperando recursos
         await page.setContent(htmlContent, { waitUntil: 'domcontentloaded', timeout: 60000 });
         
         const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '1cm', right: '1cm', bottom: '1cm', left: '1cm' } });
 
-        // 🔎 Paso 2 — Verifica tamaño del PDF y guarda copia local
+        // 🔎 Paso 2 — Verifica tamaño del PDF y guarda copia local para depuración
         console.log(`📦 Tamaño del PDF generado: ${pdfBuffer.length} bytes`);
-        try {
-            const tempPath = path.join(__dirname, `../../temp_pdf_${Date.now()}.pdf`);
-            fs.writeFileSync(tempPath, pdfBuffer);
-            console.log(`📝 Copia de depuración guardada en: ${tempPath}`);
-        } catch (writeErr) {
-            console.warn("⚠️ No se pudo guardar copia local (esto no afecta la descarga):", writeErr.message);
+        if (process.env.NODE_ENV !== 'production') {
+            try {
+                const tempPath = path.join(__dirname, `../../temp_pdf_${Date.now()}.pdf`);
+                fs.writeFileSync(tempPath, pdfBuffer);
+                console.log(`📝 Copia de depuración guardada en: ${tempPath}`);
+            } catch (writeErr) {
+                console.warn("⚠️ No se pudo guardar copia local (esto no afecta la descarga):", writeErr.message);
+            }
         }
 
         if (!pdfBuffer || pdfBuffer.length === 0) {
@@ -452,7 +488,8 @@ const generarPDF = async (req, res) => {
             res.status(500).json({ error: "Error al generar el PDF", details: error.message });
         }
     } finally {
-        if (page) await page.close();
+        // En lugar de cerrar la página, la devolvemos al pool para reutilizarla.
+        if (page) await releasePage(page);
     }
 };
 
