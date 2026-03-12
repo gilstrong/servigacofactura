@@ -125,10 +125,11 @@ const generarPDF = async (req, res) => {
         
         // Detectar si es una cotización para ocultar campos fiscales
         const esCotizacion = (ncf === 'COTIZACIÓN') || (tituloDocumento && tituloDocumento.toUpperCase().includes('COTIZACIÓN'));
+        const tipoDocumento = esCotizacion ? 'cotizacion' : 'factura';
 
         // Determinar descripción del tipo de NCF para mostrar en Factura
         let tipoNCFDescripcion = '';
-        if (!esCotizacion && ncf && ncf.length >= 3) {
+        if (tipoDocumento === 'factura' && ncf && ncf.length >= 3) {
             const prefix = ncf.substring(0, 3);
             const tiposNCF = {
                 'B01': 'Comprobante Crédito Fiscal',
@@ -155,7 +156,7 @@ const generarPDF = async (req, res) => {
         };
         
         const condicionFormateada = formatearCondicion(condicion);
-        const esCredito = condicionFormateada.toLowerCase().includes("crédito") || condicionFormateada.toLowerCase().includes("credito");
+        const esCredito = tipoDocumento === 'factura' && (condicionFormateada.toLowerCase().includes("crédito") || condicionFormateada.toLowerCase().includes("credito"));
 
         // --- LÓGICA DE FECHAS (CORREGIDA) ---
 
@@ -372,12 +373,12 @@ const generarPDF = async (req, res) => {
                 </div>
                 <div class="invoice-details">
                     <h1 class="invoice-title" style="${esCotizacion ? 'color: #ea580c;' : ''}">${tituloDocumento || 'FACTURA CON VALOR FISCAL'}</h1>
-                    ${!esCotizacion && tipoNCFDescripcion ? `<h2 class="invoice-subtitle">${tipoNCFDescripcion}</h2>` : ''}
-                    ${!esCotizacion ? `<div class="meta-item"><span class="meta-label">NCF:</span><span class="meta-value" style="color: #2563eb;">${ncf || 'N/A'}</span></div>` : ''}
-                    ${!esCotizacion && vencimientoCreditoFormateado ? `<div class="meta-item"><span class="meta-label">Vencimiento del crédito:</span><span class="meta-value" style="color: red;">${vencimientoCreditoFormateado}</span></div>` : ''}
+                    ${tipoDocumento === 'factura' && tipoNCFDescripcion ? `<h2 class="invoice-subtitle">${tipoNCFDescripcion}</h2>` : ''}
+                    ${tipoDocumento === 'factura' ? `<div class="meta-item"><span class="meta-label">NCF:</span><span class="meta-value" style="color: #2563eb;">${ncf || 'N/A'}</span></div>` : ''}
+                    ${tipoDocumento === 'factura' && vencimientoCreditoFormateado ? `<div class="meta-item"><span class="meta-label">Vencimiento del crédito:</span><span class="meta-value" style="color: red;">${vencimientoCreditoFormateado}</span></div>` : ''}
                     <div class="meta-item"><span class="meta-label">Fecha:</span><span class="meta-value">${fecha}</span></div>
-                    ${!esCotizacion ? `<div class="meta-item"><span class="meta-label">Condición:</span><span class="meta-value" style="text-transform: capitalize;">${condicionFormateada}</span></div>` : ''}
-                    ${!esCotizacion && vencimientoNCF ? `<div class="meta-item"><span class="meta-label">Vencimiento de NCF:</span><span class="meta-value">${vencimientoNCF}</span></div>` : ''}
+                    ${tipoDocumento === 'factura' ? `<div class="meta-item"><span class="meta-label">Condición:</span><span class="meta-value" style="text-transform: capitalize;">${condicionFormateada}</span></div>` : ''}
+                    ${tipoDocumento === 'factura' && vencimientoNCF ? `<div class="meta-item"><span class="meta-label">Vencimiento de NCF:</span><span class="meta-value">${vencimientoNCF}</span></div>` : ''}
                 </div>
             </div>
 
@@ -413,7 +414,7 @@ const generarPDF = async (req, res) => {
                         <td class="total-final-label">TOTAL:</td>
                         <td class="total-final-value">RD$ ${parseFloat(total || 0).toLocaleString('es-DO', {minimumFractionDigits: 2})}</td>
                     </tr>
-                    ${!esCotizacion && esCredito && saldoPendiente > 0 ? `
+                    ${tipoDocumento === 'factura' && esCredito && saldoPendiente > 0 ? `
                     <tr class="total-row">
                         <td class="total-final-label" style="${estiloPendienteLabel}">PENDIENTE:</td>
                         <td class="total-final-value" style="${estiloPendienteValor}">RD$ ${saldoPendiente.toLocaleString('es-DO', {minimumFractionDigits: 2})}</td>
