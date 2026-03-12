@@ -167,6 +167,25 @@
           </div>
         </div>
 
+        <div class="my-6 p-5 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+          <div class="flex justify-between items-center mb-3">
+            <h3 class="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide flex items-center gap-2">👤 Cliente para esta Cotización (Opcional)</h3>
+            <button onclick="abrirModalClienteCotizacion()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors">
+              Agregar Cliente (RNC)
+            </button>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label for="cotizacionClienteNombre" class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Nombre del Cliente</label>
+              <input type="text" id="cotizacionClienteNombre" placeholder="Cliente General" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 outline-none cursor-pointer" readonly>
+            </div>
+            <div>
+              <label for="cotizacionClienteRNC" class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">RNC / Cédula</label>
+              <input type="text" id="cotizacionClienteRNC" placeholder="Opcional" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 outline-none cursor-pointer" readonly>
+            </div>
+          </div>
+        </div>
+
         <div class="cotizacion-tabla-container overflow-x-auto rounded-xl shadow-lg border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700 my-8">
           <table class="w-full border-collapse cotizacion-tabla table-fixed" id="cotizacionTabla">
             <thead>
@@ -1396,6 +1415,72 @@
                     </table>
                 </div>
             </div>
+        </div>
+    </div>
+  </div>
+
+  <!-- ========================================
+       👤 MODAL CLIENTE COTIZACIÓN (NUEVO)
+       ======================================== -->
+  <div id="modalClienteCotizacion" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-[100] animate-fade-in">
+    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl w-full max-w-md animate-slide-in-up" onclick="event.stopPropagation()">
+        <h3 class="text-lg font-bold mb-4 text-gray-800 dark:text-white">Cliente para Cotización</h3>
+        
+        <!-- Área de Búsqueda -->
+        <div class="mb-5 relative">
+            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">🔍 Buscar en Base de Datos</label>
+            <input id="buscarClienteCotizacion" type="text" placeholder="Buscar por Nombre o RNC..." class="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 outline-none font-medium" autocomplete="off">
+            <div id="resultadosClientesCotizacion" class="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-gray-800 shadow-xl rounded-xl border border-gray-200 dark:border-gray-600 max-h-60 overflow-y-auto z-50 hidden"></div>
+        </div>
+
+        <div class="space-y-4 border-t border-gray-100 dark:border-gray-700 pt-4">
+            <div>
+                <label for="nombreClienteCotizacionModal" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nombre del Cliente</label>
+                <input id="nombreClienteCotizacionModal" type="text" class="mt-1 w-full border border-gray-300 dark:border-gray-600 p-2 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+            <div>
+                <label for="rncClienteCotizacionModal" class="block text-sm font-medium text-gray-700 dark:text-gray-300">RNC del Cliente</label>
+                <input id="rncClienteCotizacionModal" type="text" class="mt-1 w-full border border-gray-300 dark:border-gray-600 p-2 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+            <div>
+                <label for="telefonoClienteCotizacionModal" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Teléfono</label>
+                <input id="telefonoClienteCotizacionModal" type="text" class="mt-1 w-full border border-gray-300 dark:border-gray-600 p-2 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+        </div>
+        <div class="flex justify-end gap-3 mt-6">
+            <button onclick="cerrarModalClienteCotizacion()" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-semibold hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">
+                Cancelar
+            </button>
+            <button onclick="guardarClienteCotizacion()" class="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700">
+                Guardar
+            </button>
+        </div>
+    </div>
+  </div>
+
+  <!-- ========================================
+       👤 MODAL CLIENTE COTIZACIÓN (NUEVO)
+       ======================================== -->
+  <div id="modalClienteCotizacion" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-[100] animate-fade-in">
+    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl w-full max-w-md animate-slide-in-up" onclick="event.stopPropagation()">
+        <h3 class="text-lg font-bold mb-4 text-gray-800 dark:text-white">Cliente para Cotización</h3>
+        <div class="space-y-4">
+            <div>
+                <label for="nombreClienteCotizacionModal" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nombre del Cliente</label>
+                <input id="nombreClienteCotizacionModal" type="text" class="mt-1 w-full border border-gray-300 dark:border-gray-600 p-2 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+            <div>
+                <label for="rncClienteCotizacionModal" class="block text-sm font-medium text-gray-700 dark:text-gray-300">RNC del Cliente</label>
+                <input id="rncClienteCotizacionModal" type="text" class="mt-1 w-full border border-gray-300 dark:border-gray-600 p-2 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+        </div>
+        <div class="flex justify-end gap-3 mt-6">
+            <button onclick="cerrarModalClienteCotizacion()" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-semibold hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">
+                Cancelar
+            </button>
+            <button onclick="guardarClienteCotizacion()" class="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700">
+                Guardar
+            </button>
         </div>
     </div>
   </div>

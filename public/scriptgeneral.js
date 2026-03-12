@@ -5,6 +5,8 @@ let cotizacion = [];
 let todasLasCotizaciones = []; // Para guardar múltiples cotizaciones
 let idCotizacionActiva = null; // Para saber si estamos editando una cotización existente
 let nombreCotizacionActiva = ''; // Para recordar el nombre del cliente y que no se borre
+let rncCotizacionActiva = ''; // NUEVO: Para el RNC del cliente en la cotización
+let telefonoCotizacionActiva = ''; // NUEVO: Para el teléfono del cliente
 let cotizacionAFacturar = null; // Variable temporal para el proceso de facturación
 let todasLasFacturas = []; // Para el historial de facturas
 let searchDebounceTimer; // Timer para la búsqueda
@@ -280,6 +282,46 @@ function calcularPrecioPlastificado(tamano, llevaCorte, cantidadHojas, piezasPor
 }
 
 // ============================================
+// 👤 MODAL CLIENTE COTIZACIÓN (NUEVO)
+// ============================================
+
+function abrirModalClienteCotizacion() {
+    // Pre-rellenar el modal con los valores actuales para facilitar la edición
+    document.getElementById('nombreClienteCotizacionModal').value = nombreCotizacionActiva;
+    document.getElementById('rncClienteCotizacionModal').value = rncCotizacionActiva;
+    document.getElementById('telefonoClienteCotizacionModal').value = telefonoCotizacionActiva || '';
+    
+    const modal = document.getElementById("modalClienteCotizacion");
+    modal.classList.remove("hidden");
+    modal.classList.add("flex"); // Usar flex para centrar
+}
+
+function cerrarModalClienteCotizacion() {
+    const modal = document.getElementById("modalClienteCotizacion");
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+}
+
+function guardarClienteCotizacion() {
+    const nombre = document.getElementById("nombreClienteCotizacionModal").value;
+    const rnc = document.getElementById("rncClienteCotizacionModal").value;
+    const telefono = document.getElementById("telefonoClienteCotizacionModal").value;
+
+    // Actualizar los inputs principales de la cotización (que son readonly)
+    document.getElementById("cotizacionClienteNombre").value = nombre;
+    document.getElementById("cotizacionClienteRNC").value = rnc;
+
+    // Actualizar las variables de estado globales para que el resto del sistema las use
+    nombreCotizacionActiva = nombre;
+    rncCotizacionActiva = rnc;
+    telefonoCotizacionActiva = telefono;
+
+    guardarEnLocalStorage(); // Persistir los cambios
+    cerrarModalClienteCotizacion();
+    mostrarNotificacion('Datos del cliente actualizados en la cotización.', 'success');
+}
+
+// ============================================
 // 📝 FUNCIONES DE COTIZACIÓN
 // ============================================
 
@@ -319,7 +361,12 @@ function cambiarCantidad(index, delta) {
 
 function limpiarCotizacion() {
   if (cotizacion.length === 0) {
-    mostrarNotificacion('La cotización ya está vacía', 'warning');
+    // Si no hay items pero hay datos de cliente, solo limpiar los datos del cliente
+    if (nombreCotizacionActiva || rncCotizacionActiva) {
+      ejecutarLimpiarCotizacion();
+    } else {
+      mostrarNotificacion('La cotización ya está vacía', 'warning');
+    }
     return;
   }
   
@@ -339,8 +386,14 @@ function limpiarCotizacion() {
 function ejecutarLimpiarCotizacion() {
   cotizacion = [];
   idCotizacionActiva = null;
+  nombreCotizacionActiva = '';
+  rncCotizacionActiva = '';
+  telefonoCotizacionActiva = '';
+  document.getElementById('cotizacionClienteNombre').value = '';
+  document.getElementById('cotizacionClienteRNC').value = '';
   localStorage.removeItem('cotizacion_servigaco_id');
   localStorage.removeItem('cotizacion_servigaco_nombre');
+  localStorage.removeItem('cotizacion_servigaco_rnc');
   actualizarCotizacion();
   document.getElementById('modalConfirmarLimpiar').classList.add('hidden');
   mostrarNotificacion('Cotización limpiada', 'success');
@@ -848,6 +901,53 @@ function limpiarFormulario(formId) {
 }
 
 // ============================================
+// 👤 MODAL CLIENTE COTIZACIÓN (NUEVO)
+// ============================================
+
+function abrirModalClienteCotizacion() {
+    // Pre-rellenar el modal con los valores actuales para facilitar la edición
+    document.getElementById('nombreClienteCotizacionModal').value = nombreCotizacionActiva;
+    document.getElementById('rncClienteCotizacionModal').value = rncCotizacionActiva;
+    document.getElementById('telefonoClienteCotizacionModal').value = telefonoCotizacionActiva || '';
+    
+    const modal = document.getElementById("modalClienteCotizacion");
+    modal.classList.remove("hidden");
+    modal.classList.add("flex"); // Usar flex para centrar
+    
+    // Limpiar búsqueda anterior
+    document.getElementById('buscarClienteCotizacion').value = '';
+    document.getElementById('resultadosClientesCotizacion').classList.add('hidden');
+}
+
+function cerrarModalClienteCotizacion() {
+    const modal = document.getElementById("modalClienteCotizacion");
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+}
+
+function guardarClienteCotizacion() {
+    const nombre = document.getElementById("nombreClienteCotizacionModal").value;
+    const rnc = document.getElementById("rncClienteCotizacionModal").value;
+    const telefono = document.getElementById("telefonoClienteCotizacionModal").value;
+
+    // Actualizar los inputs principales de la cotización
+    document.getElementById("cotizacionClienteNombre").value = nombre;
+    document.getElementById("cotizacionClienteRNC").value = rnc;
+
+    // Actualizar las variables de estado globales
+    nombreCotizacionActiva = nombre;
+    rncCotizacionActiva = rnc;
+    telefonoCotizacionActiva = telefono;
+
+    // Guardar en LocalStorage y refrescar la UI
+    guardarEnLocalStorage();
+    actualizarCotizacion();
+
+    cerrarModalClienteCotizacion();
+    mostrarNotificacion('Datos del cliente actualizados.', 'success');
+}
+
+// ============================================
 // 📄 GENERAR COTIZACIÓN
 // ============================================
 
@@ -1054,6 +1154,28 @@ function inicializarEventListeners() {
           document.body.style.overflow = 'auto';
       }
     });
+  }
+
+  // --- NUEVOS EVENTOS PARA CLIENTE DE COTIZACIÓN ---
+  const inputNombreCot = document.getElementById('cotizacionClienteNombre');
+  if (inputNombreCot) {
+    inputNombreCot.addEventListener('input', (e) => {
+      nombreCotizacionActiva = e.target.value;
+      guardarEnLocalStorage();
+    });
+  }
+  const inputRncCot = document.getElementById('cotizacionClienteRNC');
+  if (inputRncCot) {
+    inputRncCot.addEventListener('input', (e) => {
+      rncCotizacionActiva = e.target.value;
+      guardarEnLocalStorage();
+    });
+  }
+  
+  // --- EVENTOS BÚSQUEDA EN MODAL COTIZACIÓN ---
+  const inputBusquedaCot = document.getElementById('buscarClienteCotizacion');
+  if (inputBusquedaCot) {
+      inputBusquedaCot.addEventListener('input', manejarBusquedaClienteCotizacion);
   }
 
   // --- EVENTOS FACTURACIÓN ---
@@ -1467,9 +1589,9 @@ async function imprimirCotizacion(e) {
     fecha: fecha,
     tituloDocumento: 'COTIZACIÓN DE SERVICIOS',
     cliente: {
-      nombre: nombreCotizacionActiva || 'Cliente General',
-      rnc: '',
-      telefono: ''
+      nombre: nombreCotizacionActiva || document.getElementById('cotizacionClienteNombre')?.value || 'Cliente General',
+      rnc: rncCotizacionActiva || document.getElementById('cotizacionClienteRNC')?.value || '',
+      telefono: telefonoCotizacionActiva || ''
     },
     items: cotizacion,
     subtotal: subtotal,
@@ -1528,6 +1650,8 @@ function guardarEnLocalStorage() {
   localStorage.setItem('cotizacion_servigaco', JSON.stringify(cotizacion));
   if (idCotizacionActiva) localStorage.setItem('cotizacion_servigaco_id', idCotizacionActiva);
   if (nombreCotizacionActiva) localStorage.setItem('cotizacion_servigaco_nombre', nombreCotizacionActiva);
+  if (rncCotizacionActiva) localStorage.setItem('cotizacion_servigaco_rnc', rncCotizacionActiva);
+  if (telefonoCotizacionActiva) localStorage.setItem('cotizacion_servigaco_telefono', telefonoCotizacionActiva);
 }
 
 function cargarDeLocalStorage() {
@@ -1535,7 +1659,6 @@ function cargarDeLocalStorage() {
   if (guardado) {
     try {
       cotizacion = JSON.parse(guardado);
-      actualizarCotizacion();
     } catch (e) {
       console.error('Error cargando cotización guardada', e);
     }
@@ -1547,8 +1670,22 @@ function cargarDeLocalStorage() {
   const nombreGuardado = localStorage.getItem('cotizacion_servigaco_nombre');
   if (nombreGuardado) {
     nombreCotizacionActiva = nombreGuardado;
+    const inputNombre = document.getElementById('cotizacionClienteNombre');
+    if (inputNombre) inputNombre.value = nombreGuardado;
   }
-  if (idGuardado || nombreGuardado) actualizarCotizacion();
+  const rncGuardado = localStorage.getItem('cotizacion_servigaco_rnc');
+  if (rncGuardado) {
+    rncCotizacionActiva = rncGuardado;
+    const inputRNC = document.getElementById('cotizacionClienteRNC');
+    if (inputRNC) inputRNC.value = rncGuardado;
+  }
+  const telGuardado = localStorage.getItem('cotizacion_servigaco_telefono');
+  if (telGuardado) {
+      telefonoCotizacionActiva = telGuardado;
+  }
+  if (guardado || idGuardado || nombreGuardado || rncGuardado) {
+    actualizarCotizacion();
+  }
 }
 
 // ============================================
@@ -1561,7 +1698,9 @@ async function guardarCotizacionActual() {
     return;
   }
 
-  const nombre = nombreCotizacionActiva || "Cliente General";
+  const nombre = nombreCotizacionActiva || document.getElementById('cotizacionClienteNombre')?.value || "Cliente General";
+  const rnc = rncCotizacionActiva || document.getElementById('cotizacionClienteRNC')?.value || "";
+  const telefono = telefonoCotizacionActiva || "";
   const subtotal = cotizacion.reduce((sum, item) => sum + item.precio, 0);
   const aplicarItbis = document.getElementById('checkAplicarItbis')?.checked || false;
   let impuesto = 0;
@@ -1576,6 +1715,8 @@ async function guardarCotizacionActual() {
     timestamp: firebase.database.ServerValue.TIMESTAMP,
     tipo: "General",
     nombre: nombre,
+    rnc: rnc,
+    telefono: telefono,
     total: total.toFixed(2),
     descripcion: descripcionFinal,
     items: cotizacion
@@ -1585,6 +1726,8 @@ async function guardarCotizacionActual() {
     const newRef = await db.ref("cotizaciones").push(paqueteDeDatos);
     idCotizacionActiva = newRef.key;
     nombreCotizacionActiva = nombre;
+    rncCotizacionActiva = rnc;
+    telefonoCotizacionActiva = telefono;
     guardarEnLocalStorage();
     actualizarCotizacion();
     mostrarNotificacion(`✅ Cotización guardada`, "success");
@@ -1600,7 +1743,9 @@ async function guardarCambiosCotizacion() {
     return;
   }
 
-  const nombre = nombreCotizacionActiva || "Cliente General";
+  const nombre = nombreCotizacionActiva || document.getElementById('cotizacionClienteNombre')?.value || "Cliente General";
+  const rnc = rncCotizacionActiva || document.getElementById('cotizacionClienteRNC')?.value || "";
+  const telefono = telefonoCotizacionActiva || "";
   const subtotal = cotizacion.reduce((sum, item) => sum + item.precio, 0);
   const aplicarItbis = document.getElementById('checkAplicarItbis')?.checked || false;
   let impuesto = 0;
@@ -1614,6 +1759,8 @@ async function guardarCambiosCotizacion() {
     fecha: new Date().toISOString(),
     tipo: "General",
     nombre: nombre,
+    rnc: rnc,
+    telefono: telefono,
     total: total.toFixed(2),
     descripcion: descripcionFinal,
     items: cotizacion
@@ -1639,6 +1786,11 @@ function corregirFacturaDesdeCotizacion(id) {
   cotizacion = JSON.parse(JSON.stringify(cotizacionOriginal.items ? Object.values(cotizacionOriginal.items) : []));
   idCotizacionActiva = null;
   nombreCotizacionActiva = cotizacionOriginal.nombre || "Cliente General";
+  rncCotizacionActiva = cotizacionOriginal.rnc || "";
+  telefonoCotizacionActiva = cotizacionOriginal.telefono || "";
+  
+  document.getElementById('cotizacionClienteNombre').value = nombreCotizacionActiva;
+  document.getElementById('cotizacionClienteRNC').value = rncCotizacionActiva;
   
   actualizarCotizacion();
   cerrarModalCotizaciones();
@@ -1652,6 +1804,11 @@ function cargarCotizacionGuardada(id) {
   if (cotizacionGuardada) {
     idCotizacionActiva = id;
     nombreCotizacionActiva = cotizacionGuardada.nombre || "Cliente General";
+    rncCotizacionActiva = cotizacionGuardada.rnc || "";
+    telefonoCotizacionActiva = cotizacionGuardada.telefono || "";
+    document.getElementById('cotizacionClienteNombre').value = nombreCotizacionActiva;
+    document.getElementById('cotizacionClienteRNC').value = rncCotizacionActiva;
+
     cotizacion = cotizacionGuardada.items ? Object.values(cotizacionGuardada.items) : [];
     actualizarCotizacion();
     cerrarModalCotizaciones();
@@ -2052,6 +2209,99 @@ async function guardarNuevoCliente() {
         btn.textContent = '💾 Guardar en BD';
     }
   }
+}
+
+// ============================================
+// 🕵️ BÚSQUEDA DE CLIENTES EN COTIZACIÓN (NUEVO)
+// ============================================
+
+let searchDebounceTimerCotizacion;
+
+function manejarBusquedaClienteCotizacion(e) {
+  const termino = e.target.value.trim();
+  const lista = document.getElementById('resultadosClientesCotizacion');
+  
+  clearTimeout(searchDebounceTimerCotizacion);
+
+  if (termino.length < 3) {
+    lista.classList.add('hidden');
+    return;
+  }
+
+  searchDebounceTimerCotizacion = setTimeout(() => {
+    ejecutarBusquedaCotizacion(termino);
+  }, 450);
+}
+
+async function ejecutarBusquedaCotizacion(termino) {
+  const lista = document.getElementById('resultadosClientesCotizacion');
+  lista.innerHTML = `
+    <div class="p-3 text-center text-blue-600">
+      <span class="text-sm font-bold animate-pulse">Buscando...</span>
+    </div>
+  `;
+  lista.classList.remove('hidden');
+
+  // Usar caché local si estamos offline
+  if (!navigator.onLine) {
+     const resultadosLocal = buscarEnCacheLocal(termino);
+     mostrarResultadosClientesCotizacion(resultadosLocal, termino);
+     return;
+  }
+
+  try {
+     const response = await fetch(`${API_BASE_URL}/api/rnc/${encodeURIComponent(termino)}`);
+     if (!response.ok) throw new Error('Error al buscar');
+     
+     const resultados = await response.json();
+     if (resultados && Object.keys(resultados).length > 0) {
+        guardarEnCacheClientes(resultados);
+     }
+     mostrarResultadosClientesCotizacion(resultados, termino);
+
+  } catch (error) {
+     const resultadosLocal = buscarEnCacheLocal(termino);
+     if(resultadosLocal) mostrarResultadosClientesCotizacion(resultadosLocal, termino);
+     else lista.innerHTML = '<div class="p-3 text-center text-red-500 text-xs">Sin resultados o error.</div>';
+  }
+}
+
+function mostrarResultadosClientesCotizacion(clientes, termino) {
+  const contenedor = document.getElementById("resultadosClientesCotizacion");
+  if (!clientes || Object.keys(clientes).length === 0) {
+      contenedor.innerHTML = '<div class="p-3 text-center text-gray-500">No se encontraron resultados</div>';
+      return;
+  }
+
+  contenedor.innerHTML = Object.keys(clientes).map(rnc => {
+      const c = clientes[rnc];
+      const nombre = (c.n || c.nombre || '').replace(/'/g, "\\'");
+      const telefono = (c.telefono || c.tel || '').replace(/'/g, "\\'");
+
+      // Highlight del término de búsqueda
+      const safeTerm = termino.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const nombreDisplay = (c.n || c.nombre).replace(new RegExp(`(${safeTerm})`, 'gi'), '<span class="bg-yellow-200 text-black">$1</span>');
+
+      return `
+        <div onclick="seleccionarClienteCotizacion('${rnc}', '${nombre}', '${telefono}')"
+             class="p-3 border-b border-gray-100 dark:border-gray-700 cursor-pointer hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors">
+            <strong class="text-sm text-gray-800 dark:text-gray-200">${nombreDisplay}</strong><br>
+            <span class="text-xs text-gray-500 font-mono">RNC: ${rnc}</span>
+        </div>
+      `;
+  }).join("");
+}
+
+function seleccionarClienteCotizacion(rnc, nombre, telefono) {
+    document.getElementById("nombreClienteCotizacionModal").value = nombre;
+    document.getElementById("rncClienteCotizacionModal").value = rnc;
+    document.getElementById("telefonoClienteCotizacionModal").value = telefono;
+
+    // Limpiar búsqueda
+    document.getElementById('resultadosClientesCotizacion').classList.add('hidden');
+    document.getElementById('buscarClienteCotizacion').value = '';
+    
+    mostrarNotificacion('Cliente seleccionado', 'success');
 }
 
 // ============================================
